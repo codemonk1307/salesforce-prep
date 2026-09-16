@@ -1,0 +1,609 @@
+
+<section id="algo">
+<h2>7. Algorithm templates by pattern (trigger, invariant, code, what breaks it)</h2>
+<p class="small">Learn the template, then re-derive it. Every card: when it fires, the invariant you say out loud, the code, and the edge cases.</p>
+
+<details class="card"><summary>Sliding window: fixed, variable, at-most-K, exactly-K <span class="tag hot">top priority</span></summary><div class="body">
+<p><b>Fires on:</b> contiguous subarray/substring + a constraint that is monotone under growth (adding an element only makes the constraint "more violated"). <b>Invariant:</b> the window [l, r] is always valid after the inner while loop. <b>Breaks with:</b> negatives when the constraint is a sum (use prefix sum + hashmap).</p>
+<pre>
+def fixed_window(nums, k):                         # e.g. max sum of any k consecutive
+    s = sum(nums[:k]); best = s
+    for r in range(k, len(nums)):
+        s += nums[r] - nums[r - k]
+        best = max(best, s)
+    return best
+
+def longest_valid(s):                              # variable window, longest window satisfying a condition
+    cnt = defaultdict(int); l = 0; best = 0
+    for r, ch in enumerate(s):
+        cnt[ch] += 1                               # 1. add right
+        while INVALID(cnt):                        # 2. shrink until valid
+            cnt[s[l]] -= 1; l += 1
+        best = max(best, r - l + 1)                # 3. record
+    return best
+
+def length_of_longest_substring(s):                # no repeating chars
+    last = {}; l = 0; best = 0
+    for r, ch in enumerate(s):
+        if ch in last and last[ch] >= l: l = last[ch] + 1
+        last[ch] = r; best = max(best, r - l + 1)
+    return best
+
+def min_window_substring(s, t):                    # smallest window covering all of t
+    need = Counter(t); missing = len(t); l = 0; best = (INF, 0, 0)
+    for r, ch in enumerate(s):
+        if need[ch] > 0: missing -= 1
+        need[ch] -= 1
+        while missing == 0:                        # valid, try shrinking
+            if r - l + 1 < best[0]: best = (r - l + 1, l, r)
+            need[s[l]] += 1
+            if need[s[l]] > 0: missing += 1
+            l += 1
+    return '' if best[0] == INF else s[best[1]:best[2] + 1]
+
+def at_most_k_distinct(s, k):                      # count of substrings with <= k distinct
+    if k < 0: return 0
+    cnt = defaultdict(int); l = 0; res = 0
+    for r, ch in enumerate(s):
+        cnt[ch] += 1
+        while len(cnt) > k:
+            cnt[s[l]] -= 1
+            if cnt[s[l]] == 0: del cnt[s[l]]
+            l += 1
+        res += r - l + 1                           # every window ending at r
+    return res
+def exactly_k_distinct(s, k): return at_most_k_distinct(s, k) - at_most_k_distinct(s, k - 1)
+
+def longest_repeating_replacement(s, k):           # window valid if len - maxfreq <= k
+    cnt = defaultdict(int); l = 0; maxf = 0; best = 0
+    for r, ch in enumerate(s):
+        cnt[ch] += 1; maxf = max(maxf, cnt[ch])   # maxf never needs to decrease for a max-length answer
+        if r - l + 1 - maxf > k:
+            cnt[s[l]] -= 1; l += 1
+        best = max(best, r - l + 1)
+    return best
+
+def min_subarray_len(target, nums):                # positives only: smallest window with sum >= target
+    l = 0; s = 0; best = INF
+    for r, x in enumerate(nums):
+        s += x
+        while s >= target:
+            best = min(best, r - l + 1); s -= nums[l]; l += 1
+    return 0 if best == INF else best
+
+def find_anagrams(s, p):                           # fixed window with count match
+    need = Counter(p); win = Counter(); k = len(p); out = []
+    for r, ch in enumerate(s):
+        win[ch] += 1
+        if r >= k:
+            win[s[r - k]] -= 1
+            if win[s[r - k]] == 0: del win[s[r - k]]
+        if win == need: out.append(r - k + 1)
+    return out
+</pre>
+<p class="small">Edge: k = 0, k &gt; len, empty string, all same chars. Say the complexity: O(n) because l and r each move at most n times.</p>
+</div></details>
+
+<details class="card"><summary>Prefix sums, hashmap of prefix, difference array, 2D prefix <span class="tag hot">top priority</span></summary><div class="body">
+<p><b>Fires on:</b> subarray sum equals / divisible by K, with negatives or zeros; range sum queries with no updates; "apply many range increments". <b>Invariant:</b> prefix[i] = sum of first i elements; subarray (l..r] sum = prefix[r+1] - prefix[l].</p>
+<pre>
+def subarray_sum_equals_k(nums, k):                # count, works with negatives
+    seen = defaultdict(int); seen[0] = 1; s = 0; res = 0
+    for x in nums:
+        s += x
+        res += seen[s - k]                          # earlier prefix with s - k
+        seen[s] += 1
+    return res
+
+def max_len_subarray_sum_k(nums, k):               # longest, store FIRST index of each prefix
+    first = {0: -1}; s = 0; best = 0
+    for i, x in enumerate(nums):
+        s += x
+        if s - k in first: best = max(best, i - first[s - k])
+        first.setdefault(s, i)
+    return best
+# Contiguous Array (equal 0s and 1s): map 0 -> -1, then longest subarray sum 0
+
+def subarrays_div_by_k(nums, k):
+    cnt = defaultdict(int); cnt[0] = 1; s = 0; res = 0
+    for x in nums:
+        s = (s + x) % k                            # Python % is non-negative for k > 0
+        res += cnt[s]; cnt[s] += 1
+    return res
+# Continuous Subarray Sum (len >= 2, multiple of k): store first index of each remainder, check i - j >= 2
+
+def product_except_self(nums):
+    n = len(nums); out = [1] * n
+    pre = 1
+    for i in range(n): out[i] = pre; pre *= nums[i]
+    suf = 1
+    for i in range(n - 1, -1, -1): out[i] *= suf; suf *= nums[i]
+    return out
+
+def difference_array(n, updates):                  # updates: (l, r, val) inclusive
+    diff = [0] * (n + 1)
+    for l, r, v in updates: diff[l] += v; diff[r + 1] -= v
+    return list(accumulate(diff))[:n]
+# Car Pooling / Meeting rooms by timeline: same idea keyed on time (dict or sorted events)
+
+class NumMatrix:                                   # 2D prefix, O(1) region sum
+    def __init__(self, m):
+        R, C = len(m), len(m[0]); self.p = [[0] * (C + 1) for _ in range(R + 1)]
+        for r in range(R):
+            for c in range(C):
+                self.p[r+1][c+1] = m[r][c] + self.p[r][c+1] + self.p[r+1][c] - self.p[r][c]
+    def sumRegion(self, r1, c1, r2, c2):
+        p = self.p
+        return p[r2+1][c2+1] - p[r1][c2+1] - p[r2+1][c1] + p[r1][c1]
+
+def kadane(nums):                                  # max subarray sum
+    best = cur = nums[0]
+    for x in nums[1:]:
+        cur = max(x, cur + x); best = max(best, cur)
+    return best
+# max product subarray: track both max and min (negatives flip), reset on zero implicitly
+# circular max subarray: max(kadane, total - min_subarray) unless all negative
+</pre>
+</div></details>
+
+<details class="card"><summary>Two pointers: sorted pairs, 3Sum, read/write, Dutch flag, palindromes <span class="tag hot">top priority</span></summary><div class="body">
+<p><b>Fires on:</b> sorted input + target; opposite-ends; in-place removal or partition; palindrome. <b>Invariant (sorted pair):</b> every pair excluded so far cannot be the answer because moving the other pointer only makes the sum worse.</p>
+<pre>
+def two_sum_sorted(nums, target):
+    l, r = 0, len(nums) - 1
+    while l < r:
+        s = nums[l] + nums[r]
+        if s == target: return [l, r]
+        if s < target: l += 1
+        else: r -= 1
+    return []
+
+def three_sum(nums):
+    nums.sort(); out = []
+    for i in range(len(nums) - 2):
+        if i and nums[i] == nums[i - 1]: continue           # skip duplicate anchors
+        if nums[i] > 0: break
+        l, r = i + 1, len(nums) - 1
+        while l < r:
+            s = nums[i] + nums[l] + nums[r]
+            if s < 0: l += 1
+            elif s > 0: r -= 1
+            else:
+                out.append([nums[i], nums[l], nums[r]])
+                l += 1; r -= 1
+                while l < r and nums[l] == nums[l - 1]: l += 1   # skip duplicate l
+                while l < r and nums[r] == nums[r + 1]: r -= 1
+    return out
+
+def container_most_water(h):
+    l, r = 0, len(h) - 1; best = 0
+    while l < r:
+        best = max(best, (r - l) * min(h[l], h[r]))
+        if h[l] < h[r]: l += 1
+        else: r -= 1
+    return best
+
+def trap_rain_water(h):
+    l, r = 0, len(h) - 1; lmax = rmax = 0; water = 0
+    while l < r:
+        if h[l] < h[r]:
+            lmax = max(lmax, h[l]); water += lmax - h[l]; l += 1
+        else:
+            rmax = max(rmax, h[r]); water += rmax - h[r]; r -= 1
+    return water
+
+def remove_duplicates_sorted(nums):                # read/write pointer, returns new length
+    w = 0
+    for r in range(len(nums)):
+        if w == 0 or nums[r] != nums[w - 1]:
+            nums[w] = nums[r]; w += 1
+    return w
+# move zeroes: write non-zeros forward, then fill zeros; or swap on the fly to keep order
+
+def sort_colors(nums):                             # Dutch national flag: [0,lo) 0s, [lo,mid) 1s, (hi,n) 2s
+    lo, mid, hi = 0, 0, len(nums) - 1
+    while mid <= hi:
+        if nums[mid] == 0: nums[lo], nums[mid] = nums[mid], nums[lo]; lo += 1; mid += 1
+        elif nums[mid] == 1: mid += 1
+        else: nums[mid], nums[hi] = nums[hi], nums[mid]; hi -= 1
+
+def valid_palindrome_ii(s):                        # allow one deletion
+    def ok(l, r):
+        while l < r:
+            if s[l] != s[r]: return False
+            l += 1; r -= 1
+        return True
+    l, r = 0, len(s) - 1
+    while l < r:
+        if s[l] != s[r]: return ok(l + 1, r) or ok(l, r - 1)
+        l += 1; r -= 1
+    return True
+
+def merge_sorted_in_place(a, m, b, n):             # a has room; fill from the back
+    i, j, k = m - 1, n - 1, m + n - 1
+    while j >= 0:
+        if i >= 0 and a[i] > b[j]: a[k] = a[i]; i -= 1
+        else: a[k] = b[j]; j -= 1
+        k -= 1
+
+def longest_consecutive(nums):                     # hashing, not two pointers, but goes with arrays
+    s = set(nums); best = 0
+    for x in s:
+        if x - 1 not in s:                         # only start from sequence starts
+            y = x
+            while y + 1 in s: y += 1
+            best = max(best, y - x + 1)
+    return best
+</pre>
+</div></details>
+
+<details class="card"><summary>Binary search: lower bound, first-true, rotated, peak, on answer, on 2D <span class="tag hot">top priority</span></summary><div class="body">
+<p><b>Fires on:</b> sorted or monotone predicate; "minimum X such that feasible(X)"; minimize the max / maximize the min. <b>Invariant:</b> the answer is always inside [lo, hi]; predicate is False...False True...True and we hunt the boundary.</p>
+<pre>
+def lower_bound(arr, x):                           # first i with arr[i] >= x (== bisect_left)
+    lo, hi = 0, len(arr)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if arr[mid] < x: lo = mid + 1
+        else: hi = mid
+    return lo
+
+def first_true(lo, hi, pred):                      # generic: smallest v in [lo, hi] with pred(v) True; hi+1 if none
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if pred(mid): hi = mid
+        else: lo = mid + 1
+    return lo if pred(lo) else hi + 1
+# last_true = first_true(lo, hi, not pred) - 1
+
+def search_range(nums, target):                    # first and last position
+    l = bisect.bisect_left(nums, target)
+    if l == len(nums) or nums[l] != target: return [-1, -1]
+    return [l, bisect.bisect_right(nums, target) - 1]
+
+def search_rotated(nums, target):
+    lo, hi = 0, len(nums) - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if nums[mid] == target: return mid
+        if nums[lo] <= nums[mid]:                  # left half sorted
+            if nums[lo] <= target < nums[mid]: hi = mid - 1
+            else: lo = mid + 1
+        else:                                      # right half sorted
+            if nums[mid] < target <= nums[hi]: lo = mid + 1
+            else: hi = mid - 1
+    return -1
+# with duplicates: if nums[lo] == nums[mid] == nums[hi]: lo += 1; hi -= 1 (worst case O(n))
+
+def find_min_rotated(nums):
+    lo, hi = 0, len(nums) - 1
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if nums[mid] > nums[hi]: lo = mid + 1
+        else: hi = mid
+    return nums[lo]
+
+def find_peak(nums):
+    lo, hi = 0, len(nums) - 1
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if nums[mid] < nums[mid + 1]: lo = mid + 1
+        else: hi = mid
+    return lo
+
+def koko(piles, h):                                # binary search on answer: min speed
+    def feasible(k): return sum(-(-p // k) for p in piles) <= h
+    lo, hi = 1, max(piles)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if feasible(mid): hi = mid
+        else: lo = mid + 1
+    return lo
+
+def ship_within_days(weights, days):               # min capacity
+    def feasible(cap):
+        d, cur = 1, 0
+        for w in weights:
+            if cur + w > cap: d += 1; cur = 0
+            cur += w
+        return d <= days
+    lo, hi = max(weights), sum(weights)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if feasible(mid): hi = mid
+        else: lo = mid + 1
+    return lo
+# same skeleton: Split Array Largest Sum, Minimum Days to Make Bouquets, Magnetic Force (maximize min: flip the branches),
+# Kth Smallest in Multiplication Table / Sorted Matrix (count <= mid), Sqrt(x), Median of two sorted arrays (partition)
+
+def search_matrix(matrix, target):                 # rows sorted, each row starts > previous ends
+    R, C = len(matrix), len(matrix[0]); lo, hi = 0, R * C - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2; v = matrix[mid // C][mid % C]
+        if v == target: return True
+        if v < target: lo = mid + 1
+        else: hi = mid - 1
+    return False
+# matrix sorted by rows and columns (not flattened): start top-right, move left if bigger, down if smaller: O(R + C)
+
+def median_two_sorted(a, b):
+    if len(a) > len(b): a, b = b, a
+    m, n = len(a), len(b); lo, hi = 0, m; half = (m + n + 1) // 2
+    while lo <= hi:
+        i = (lo + hi) // 2; j = half - i
+        aL = a[i-1] if i else -INF; aR = a[i] if i < m else INF
+        bL = b[j-1] if j else -INF; bR = b[j] if j < n else INF
+        if aL <= bR and bL <= aR:
+            if (m + n) % 2: return max(aL, bL)
+            return (max(aL, bL) + min(aR, bR)) / 2
+        if aL > bR: hi = i - 1
+        else: lo = i + 1
+</pre>
+<p class="small">Bugs to avoid: infinite loop when <code>lo = mid</code> without <code>mid = (lo+hi+1)//2</code>; off-by-one on hi = len vs len-1 (decide half-open or closed and stick with it); feasibility function must be monotone or the search is invalid.</p>
+</div></details>
+
+<details class="card"><summary>Sorting: merge sort, quickselect, counting/bucket, cyclic sort, custom comparators</summary><div class="body">
+<pre>
+def merge_sort(a):
+    if len(a) <= 1: return a
+    mid = len(a) // 2; L, R = merge_sort(a[:mid]), merge_sort(a[mid:])
+    out, i, j = [], 0, 0
+    while i < len(L) and j < len(R):
+        if L[i] <= R[j]: out.append(L[i]); i += 1
+        else: out.append(R[j]); j += 1
+    out += L[i:]; out += R[j:]
+    return out
+# count inversions: add len(L) - i whenever taking from R
+
+def quickselect(nums, k):                          # kth smallest (0-indexed), avg O(n)
+    lo, hi = 0, len(nums) - 1
+    while True:
+        p = random.randint(lo, hi); nums[p], nums[hi] = nums[hi], nums[p]
+        store = lo
+        for i in range(lo, hi):
+            if nums[i] < nums[hi]:
+                nums[store], nums[i] = nums[i], nums[store]; store += 1
+        nums[store], nums[hi] = nums[hi], nums[store]
+        if store == k: return nums[store]
+        if store < k: lo = store + 1
+        else: hi = store - 1
+
+def counting_sort(a, max_val):
+    cnt = [0] * (max_val + 1)
+    for x in a: cnt[x] += 1
+    return [v for v, c in enumerate(cnt) for _ in range(c)]
+# sort characters by frequency: bucket[freq] lists; top K frequent: same buckets
+
+def cyclic_sort(nums):                             # values 1..n, put each at index val-1
+    i = 0
+    while i < len(nums):
+        j = nums[i] - 1
+        if 0 <= j < len(nums) and nums[i] != nums[j]: nums[i], nums[j] = nums[j], nums[i]
+        else: i += 1
+    # first missing positive: first i with nums[i] != i + 1 -> i + 1
+    # find duplicate: value at wrong index; or Floyd on nums as linked list (O(1) space, no modify)
+
+def largest_number(nums):
+    s = sorted(map(str, nums), key=cmp_to_key(lambda a, b: -1 if a + b > b + a else 1))
+    return '0' if s[0] == '0' else ''.join(s)
+
+def custom_sort_string(order, s):
+    rank = {ch: i for i, ch in enumerate(order)}
+    return ''.join(sorted(s, key=lambda c: rank.get(c, len(order))))
+
+def wiggle_sort(nums):                             # a <= b >= c <= d ...
+    for i in range(len(nums) - 1):
+        if (i % 2 == 0) == (nums[i] > nums[i + 1]): nums[i], nums[i + 1] = nums[i + 1], nums[i]
+
+# sort intervals by start; sort by end for greedy non-overlap; sort tuples with key=(a, -b)
+# sort version strings: key=lambda v: [int(x) for x in v.split('.')]
+</pre>
+</div></details>
+
+<details class="card"><summary>Matrix / grid in-place tricks</summary><div class="body">
+<pre>
+def spiral(m):
+    out = []; top, bot, left, right = 0, len(m) - 1, 0, len(m[0]) - 1
+    while top <= bot and left <= right:
+        for c in range(left, right + 1): out.append(m[top][c])
+        top += 1
+        for r in range(top, bot + 1): out.append(m[r][right])
+        right -= 1
+        if top <= bot:
+            for c in range(right, left - 1, -1): out.append(m[bot][c])
+            bot -= 1
+        if left <= right:
+            for r in range(bot, top - 1, -1): out.append(m[r][left])
+            left += 1
+    return out
+
+def rotate_90(m):                                  # in place: transpose then reverse each row
+    n = len(m)
+    for i in range(n):
+        for j in range(i + 1, n): m[i][j], m[j][i] = m[j][i], m[i][j]
+    for row in m: row.reverse()
+
+def set_zeroes(m):                                 # O(1) space: use first row/col as markers
+    R, C = len(m), len(m[0]); first_col = any(m[r][0] == 0 for r in range(R))
+    for r in range(R):
+        for c in range(1, C):
+            if m[r][c] == 0: m[r][0] = m[0][c] = 0
+    for r in range(R - 1, -1, -1):
+        for c in range(C - 1, 0, -1):
+            if m[r][0] == 0 or m[0][c] == 0: m[r][c] = 0
+        if first_col: m[r][0] = 0
+
+def valid_sudoku(board):
+    rows, cols, boxes = [set() for _ in range(9)], [set() for _ in range(9)], [set() for _ in range(9)]
+    for r in range(9):
+        for c in range(9):
+            v = board[r][c]
+            if v == '.': continue
+            b = (r // 3) * 3 + c // 3
+            if v in rows[r] or v in cols[c] or v in boxes[b]: return False
+            rows[r].add(v); cols[c].add(v); boxes[b].add(v)
+    return True
+
+def game_of_life(board):                           # encode next state in bit 1, current in bit 0
+    R, C = len(board), len(board[0])
+    for r in range(R):
+        for c in range(C):
+            live = sum((board[r+dr][c+dc] & 1) for dr in (-1,0,1) for dc in (-1,0,1)
+                       if (dr or dc) and 0 <= r+dr < R and 0 <= c+dc < C)
+            if board[r][c] & 1 and live in (2, 3): board[r][c] |= 2
+            if not board[r][c] & 1 and live == 3: board[r][c] |= 2
+    for r in range(R):
+        for c in range(C): board[r][c] >>= 1
+
+def diagonal_groups(m):                            # cells on same diagonal share r - c; anti-diagonal share r + c
+    d = defaultdict(list)
+    for r, row in enumerate(m):
+        for c, v in enumerate(row): d[r - c].append(v)
+    return d
+</pre>
+</div></details>
+
+<details class="card"><summary>Trees: DFS with designed return value, BFS by level, LCA, construction, serialization <span class="tag hot">top priority</span></summary><div class="body">
+<p><b>Return-value design:</b> ask "what does the child need to give the parent so the parent can decide?" Often it is a tuple: (height, is_balanced), (min, max, is_bst), (best_path_through_here). Track the global answer in a nonlocal variable.</p>
+<pre>
+def max_depth(root):
+    return 0 if not root else 1 + max(max_depth(root.left), max_depth(root.right))
+
+def is_balanced(root):
+    def h(n):                                      # returns height or -1 if unbalanced
+        if not n: return 0
+        l = h(n.left);  r = h(n.right)
+        if l < 0 or r < 0 or abs(l - r) > 1: return -1
+        return 1 + max(l, r)
+    return h(root) >= 0
+
+def diameter(root):
+    best = 0
+    def depth(n):
+        nonlocal best
+        if not n: return 0
+        l, r = depth(n.left), depth(n.right)
+        best = max(best, l + r)                    # path through n, in edges
+        return 1 + max(l, r)
+    depth(root); return best
+
+def max_path_sum(root):
+    best = -INF
+    def gain(n):
+        nonlocal best
+        if not n: return 0
+        l = max(gain(n.left), 0); r = max(gain(n.right), 0)   # drop negative branches
+        best = max(best, n.val + l + r)
+        return n.val + max(l, r)                   # can only extend one side upward
+    gain(root); return best
+
+def is_valid_bst(root, lo=-INF, hi=INF):
+    if not root: return True
+    if not lo < root.val < hi: return False
+    return is_valid_bst(root.left, lo, root.val) and is_valid_bst(root.right, root.val, hi)
+
+def level_order(root):
+    out = []; q = deque([root] if root else [])
+    while q:
+        level = []
+        for _ in range(len(q)):                    # process exactly one level
+            n = q.popleft(); level.append(n.val)
+            if n.left: q.append(n.left)
+            if n.right: q.append(n.right)
+        out.append(level)
+    return out
+# right side view: last of each level; zigzag: reverse odd levels; min depth: first leaf met in BFS
+
+def lca(root, p, q):                               # binary tree, both present
+    if not root or root is p or root is q: return root
+    l, r = lca(root.left, p, q), lca(root.right, p, q)
+    return root if l and r else l or r
+# BST LCA: walk down; if both < node go left, both > go right, else node
+# with parent pointers: two-pointer like intersection of linked lists
+
+def build_from_pre_in(preorder, inorder):
+    pos = {v: i for i, v in enumerate(inorder)}; it = iter(preorder)
+    def build(lo, hi):                             # inorder slice [lo, hi)
+        if lo >= hi: return None
+        val = next(it); node = TreeNode(val); m = pos[val]
+        node.left = build(lo, m); node.right = build(m + 1, hi)
+        return node
+    return build(0, len(inorder))
+
+class Codec:                                       # serialize with preorder + '#' markers
+    def serialize(self, root):
+        out = []
+        def dfs(n):
+            if not n: out.append('#'); return
+            out.append(str(n.val)); dfs(n.left); dfs(n.right)
+        dfs(root); return ','.join(out)
+    def deserialize(self, data):
+        it = iter(data.split(','))
+        def dfs():
+            v = next(it)
+            if v == '#': return None
+            n = TreeNode(int(v)); n.left = dfs(); n.right = dfs(); return n
+        return dfs()
+
+def kth_smallest_bst(root, k):
+    st = []; cur = root
+    while st or cur:
+        while cur: st.append(cur); cur = cur.left
+        cur = st.pop(); k -= 1
+        if k == 0: return cur.val
+        cur = cur.right
+
+def path_sum_iii(root, target):                    # number of downward paths summing to target: prefix sums on the path
+    cnt = defaultdict(int); cnt[0] = 1; res = 0
+    def dfs(n, s):
+        nonlocal res
+        if not n: return
+        s += n.val; res += cnt[s - target]; cnt[s] += 1
+        dfs(n.left, s); dfs(n.right, s)
+        cnt[s] -= 1                                # backtrack
+    dfs(root, 0); return res
+
+def is_subtree(root, sub):
+    def same(a, b):
+        if not a or not b: return a is b
+        return a.val == b.val and same(a.left, b.left) and same(a.right, b.right)
+    if not root: return sub is None
+    return same(root, sub) or is_subtree(root.left, sub) or is_subtree(root.right, sub)
+
+def flatten_to_linked_list(root):                  # preorder, in place, using right pointers
+    cur = root
+    while cur:
+        if cur.left:
+            pre = cur.left
+            while pre.right: pre = pre.right
+            pre.right = cur.right; cur.right = cur.left; cur.left = None
+        cur = cur.right
+
+def vertical_order(root):                          # BFS with column index, sort columns
+    cols = defaultdict(list); q = deque([(root, 0)]) if root else deque()
+    while q:
+        n, c = q.popleft(); cols[c].append(n.val)
+        if n.left: q.append((n.left, c - 1))
+        if n.right: q.append((n.right, c + 1))
+    return [cols[c] for c in sorted(cols)]
+
+def count_good_nodes(root):                        # nodes >= max on path from root
+    def dfs(n, mx):
+        if not n: return 0
+        good = 1 if n.val >= mx else 0; mx = max(mx, n.val)
+        return good + dfs(n.left, mx) + dfs(n.right, mx)
+    return dfs(root, -INF)
+
+def invert(root):
+    if root: root.left, root.right = invert(root.right), invert(root.left)
+    return root
+
+def is_symmetric(root):
+    def mirror(a, b):
+        if not a or not b: return a is b
+        return a.val == b.val and mirror(a.left, b.right) and mirror(a.right, b.left)
+    return mirror(root, root)
+# N-ary tree: replace left/right with for child in n.children
+# Deep trees: convert to iterative or bump recursion limit
+</pre>
+</div></details>

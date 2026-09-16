@@ -1,0 +1,632 @@
+
+<style>
+#lazyBtn{background:var(--accent); color:#fff; border-color:var(--accent); font-weight:bold}
+#reels{position:fixed; inset:0; z-index:50; background:var(--bg); display:none; flex-direction:column}
+#reels.on{display:flex}
+#reels .bar{flex:none; display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--paper); border-bottom:1px solid var(--line); font-family:system-ui,sans-serif; font-size:.85rem}
+#reels .bar .grow{flex:1; height:6px; background:var(--line); border-radius:3px; overflow:hidden}
+#reels .bar .grow i{display:block; height:100%; width:0; background:var(--accent); transition:width .25s}
+#reels .bar button{font:inherit; font-size:.8rem; padding:4px 8px; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink); cursor:pointer}
+#reels .bar button.active{background:var(--accent-soft)}
+#feed{flex:1; overflow-y:auto; scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch; overscroll-behavior:contain}
+.reel{scroll-snap-align:start; scroll-snap-stop:always; min-height:100%; height:100%; display:flex; align-items:flex-start; justify-content:center; padding:10px 12px 90px; overflow-y:auto}
+.reel .inner{width:100%; max-width:600px; background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:16px 16px 14px; box-shadow:var(--shadow)}
+.reel .meta{display:flex; justify-content:space-between; align-items:center; font-family:system-ui,sans-serif; font-size:.75rem; color:var(--muted); margin-bottom:6px}
+.reel .meta .done{color:var(--green); font-weight:bold}
+.reel h3{font-size:1.35rem; margin:0 0 4px; color:var(--ink)}
+.reel .hook{font-style:italic; color:var(--accent); margin:0 0 10px; font-size:1.02rem}
+.reel .blk{margin:8px 0}
+.reel .blk b.lbl{display:block; font-family:system-ui,sans-serif; font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:2px}
+.reel .blk p{margin:0; font-size:.98rem; line-height:1.5}
+.reel pre{font-size:12.5px; margin:6px 0; max-height:260px}
+.reel .trig{background:var(--gold-soft); border-radius:8px; padding:6px 10px; font-size:.92rem}
+.reel .quiz{background:var(--accent-soft); border-radius:8px; padding:8px 10px; cursor:pointer}
+.reel .quiz .ans{display:none; margin-top:6px; padding-top:6px; border-top:1px dashed var(--accent)}
+.reel .quiz.open .ans{display:block}
+.reel .quiz .tap{font-family:system-ui,sans-serif; font-size:.75rem; color:var(--muted)}
+.reel .acts{display:flex; gap:8px; margin-top:12px}
+.reel .acts button{flex:1; font:inherit; font-size:.95rem; padding:10px; border-radius:10px; border:1px solid var(--line); background:var(--paper); color:var(--ink); cursor:pointer}
+.reel .acts .got{background:var(--green-soft); border-color:var(--green); font-weight:bold}
+.reel .acts .again{background:var(--gold-soft)}
+.reel.learned .inner{border-color:var(--green)}
+#toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:8px 14px; border-radius:99px; font-family:system-ui,sans-serif; font-size:.85rem; opacity:0; transition:opacity .2s; pointer-events:none; z-index:60}
+#toast.show{opacity:.95}
+.reel .end{text-align:center; padding:40px 10px}
+@media (max-width:480px){ .reel{padding:6px 6px 80px} .reel .inner{padding:12px 12px 10px; border-radius:10px} .reel h3{font-size:1.2rem} }
+</style>
+
+<div id="reels" aria-label="Lazy mode">
+  <div class="bar">
+    <button id="reelClose" title="Back to the page">&larr; Page</button>
+    <div class="grow"><i id="reelProg"></i></div>
+    <span id="reelCount">0/0</span>
+    <span id="reelStreak" title="streak">&#128293; 0</span>
+    <button id="reelUnlearned" title="Show only what you have not marked Got it">Unlearned</button>
+    <button id="reelShuffle" title="Shuffle order">Shuffle</button>
+  </div>
+  <div id="feed"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+  var KEY = 'sfprep:reel:';
+  // ---------- the deck: one concept per card, in learning order ----------
+  var R = [
+  // ===== mindset =====
+  {t:'Read N first', g:'mindset', hook:'The constraint tells you the answer family before you read the problem.',
+   pain:'People read the story, get an idea, code it, and discover at minute 25 that it is O(n^2) on n = 10^5. That is 10^10 operations, dead.',
+   trick:'N &lt;= 20 means exponential is fine (subsets, bitmask). N &lt;= 1000 means O(n^2) is fine. N &lt;= 10^5 means you need O(n log n) or O(n): sort, heap, binary search, hashing, one pass. A value up to 10^9 with "minimum X such that" means binary search on the answer.',
+   feel:'"n up to 10^5, find the minimum capacity to ship in D days" -> capacity is a value up to 10^9, feasibility is monotone -> binary search on the answer. You knew the shape before reading the examples.',
+   code:'# say this out loud at minute 1\n# n = 1e5 -> O(n log n) budget\n# -> sort / heap / bisect / hash / one pass\n# n = 20  -> 2^n ok -> subsets, bitmask DP\n# n = 1000 -> n^2 ok -> 2D DP, pairwise',
+   trig:'"1 <= n <= 10^5", "answer fits in 32-bit", "n <= 20"',
+   q:'n = 3000, "count pairs (i, j) with nums[i] + nums[j] == k". What budget do you have and what does it buy you?',
+   a:'O(n^2) = 9 million is fine. Nested loop is acceptable, but a hashmap one-pass is O(n) and shows taste. Say both.'},
+  {t:'Brute force first, then remove redundant work', g:'mindset', hook:'Every fast algorithm is a brute force with the repeated work deleted.',
+   pain:'Jumping to "the trick" without the brute force means you cannot explain why the trick is correct, and interviewers probe exactly that.',
+   trick:'State the brute force and its complexity in two sentences. Then ask: what am I recomputing? Overlapping windows -> sliding window. Repeated range sums -> prefix sums. Repeated "find the max so far" -> heap or monotonic stack. Repeated subproblems -> DP. Repeated "are these connected" -> Union-Find.',
+   feel:'Max sum of any k consecutive: brute force recomputes the sum for every start, O(nk). The two adjacent windows share k-1 elements. Delete the shared work: add the new element, subtract the old. O(n).',
+   code:'# brute: for every start, sum k items -> O(n*k)\n# redundancy: windows overlap by k-1\n# fix: s += nums[r] - nums[r-k]',
+   trig:'Whenever you feel stuck: "what is the brute force, and what is it recomputing?"',
+   q:'Brute force for "next greater element" is O(n^2). What is being recomputed?',
+   a:'For each i you rescan the same elements to the right. A monotonic stack visits each element once as it is pushed and once as it is popped: O(n).'},
+  // ===== hashing =====
+  {t:'Hashmap: trade memory for O(1) lookups', g:'hashing', hook:'Instead of searching for a thing, remember it the first time you see it.',
+   pain:'"Is there a pair summing to k?" Nested loop is O(n^2). Sorting then two pointers is O(n log n) and loses the original indices.',
+   trick:'One pass. For each x, ask the map "have you seen k - x?" then store x. The map turns "search the past" into "look up the past". Every "have I seen this before" question is a hashmap.',
+   feel:'[2, 7, 11, 15], k = 9. See 2: need 7, not seen, store 2. See 7: need 2, seen at index 0. Done in two steps.',
+   code:'seen = {}\nfor i, x in enumerate(nums):\n    if k - x in seen: return [seen[k - x], i]\n    seen[x] = i',
+   trig:'"have you seen", "count of each", "group by", "duplicate", "complement", "first unique"',
+   q:'Group anagrams: what is the key you hash on and why does it work?',
+   a:'sorted(word) or a 26-count tuple. Anagrams collapse to the same canonical form, so the map groups them for free.'},
+  {t:'Counter and frequency maps', g:'hashing', hook:'Half of all "string" questions are secretly "count and compare".',
+   pain:'Anagram check by sorting is O(n log n). Comparing counts is O(n). "Top K frequent" without counts is hopeless.',
+   trick:'Counter(iterable) gives you the histogram in one line. Then the question becomes about the histogram: are two histograms equal (anagram), which keys have the highest values (top K), does one histogram cover another (minimum window).',
+   feel:'Counter("aab") -> {a:2, b:1}. Counter("aba") -> same. Equal histograms means anagram, no sorting.',
+   code:'from collections import Counter\nc = Counter(s)\nc.most_common(k)          # [(elem, count)]\nCounter(a) == Counter(b)  # anagram\nc[\'z\']                    # 0, never KeyError',
+   trig:'"frequency", "most common", "anagram", "at most k distinct", "characters of t in s"',
+   q:'Top K frequent in O(n) without a heap. How?',
+   a:'Bucket sort: buckets[count] = list of elements. Walk buckets from high count down. Count is at most n, so O(n).'},
+  {t:'Prefix sums: range sums become subtraction', g:'arrays', hook:'Precompute once so every range query is O(1).',
+   pain:'Q queries of "sum from l to r" done naively is O(Q * n). With 10^5 of each, dead.',
+   trick:'pre[i] = sum of the first i elements. Then sum(l..r) = pre[r+1] - pre[l]. Build in O(n), answer each query in O(1). The leading zero avoids the l = 0 special case.',
+   feel:'[3, 1, 4, 1, 5] -> pre = [0, 3, 4, 8, 9, 14]. sum(1..3) = pre[4] - pre[1] = 9 - 3 = 6. Check: 1 + 4 + 1 = 6.',
+   code:'pre = [0]\nfor x in nums: pre.append(pre[-1] + x)\n# sum of nums[l..r] inclusive:\npre[r + 1] - pre[l]',
+   trig:'"range sum", "subarray sum", "how many between", "immutable array + many queries"',
+   q:'2D version: sum of a rectangle in O(1). What is the formula?',
+   a:'P[r2+1][c2+1] - P[r1][c2+1] - P[r2+1][c1] + P[r1][c1]. Inclusion-exclusion: you subtracted the top-left corner twice, add it back.'},
+  {t:'Prefix sum + hashmap: subarray sum equals K', g:'arrays', hook:'The reason sliding window dies with negatives, and what replaces it.',
+   pain:'"Count subarrays summing to k" with negatives: growing the window does not monotonically grow the sum, so shrinking logic is wrong. Sliding window is invalid here.',
+   trick:'sum(l..r) = pre[r] - pre[l]. You want pre[r] - pre[l] = k, so pre[l] = pre[r] - k. As you scan, keep a count map of every prefix seen. At each r, add count[pre[r] - k]. Seed count[0] = 1 for subarrays starting at index 0.',
+   feel:'[1, 2, 3], k = 3. Prefixes: 0, 1, 3, 6. At pre = 3 look for 0: found (seed) -> [1,2]. At pre = 6 look for 3: found -> [3]. Answer 2.',
+   code:'seen = defaultdict(int); seen[0] = 1\ns = res = 0\nfor x in nums:\n    s += x\n    res += seen[s - k]\n    seen[s] += 1',
+   trig:'"subarray sum equals", "divisible by k" (store s % k), "equal 0s and 1s" (map 0 to -1), "negatives allowed"',
+   q:'Longest subarray with sum k instead of count. What changes?',
+   a:'Store the FIRST index of each prefix (setdefault), and take i - first[s - k]. Earliest start gives the longest.'},
+  {t:'Kadane: max subarray in one pass', g:'arrays', hook:'At every index decide: extend the run, or start fresh here.',
+   pain:'All subarrays is O(n^2). Prefix sums help but you still need "min prefix before me".',
+   trick:'cur = best sum ending exactly at i = max(x, cur + x). If the running sum went negative it can only hurt, so drop it and start at x. Global best is the max of all cur.',
+   feel:'[-2, 1, -3, 4, -1, 2, 1]. cur: -2, 1, -2, 4, 3, 5, 6. Best 6 = [4, -1, 2, 1].',
+   code:'best = cur = nums[0]\nfor x in nums[1:]:\n    cur = max(x, cur + x)\n    best = max(best, cur)',
+   trig:'"maximum sum subarray", "max product" (track min too, negatives flip), "circular" (total - min subarray)',
+   q:'Why does max product need a min as well?',
+   a:'A very negative running product times a negative becomes very positive. Keep both the max and min product ending here, swap them when x is negative.'},
+  // ===== sliding window =====
+  {t:'Sliding window: fixed size', g:'window', hook:'Adjacent windows share almost everything. Stop recomputing.',
+   pain:'Sum / count / max of every window of size k done from scratch is O(nk).',
+   trick:'Keep the aggregate of the current window. When r moves right, add nums[r] and remove nums[r - k]. O(1) per step. Works for anything you can add and remove: sum, counts, distinct count.',
+   feel:'k = 3 on [1, 3, 2, 6, -1]: window sums 6, 11, 7. Each is previous + new - old.',
+   code:'s = sum(nums[:k]); best = s\nfor r in range(k, len(nums)):\n    s += nums[r] - nums[r - k]\n    best = max(best, s)',
+   trig:'"every window of size k", "k consecutive", "substring of length k"',
+   q:'Max of every window of size k. Add/remove does not work for max. What do you use?',
+   a:'A monotonic deque of indices with decreasing values. Front is the max; pop front when it leaves the window. Comes later in the deck.'},
+  {t:'Sliding window: variable size (the shrink loop)', g:'window', hook:'Grow until invalid, shrink until valid, record. Two pointers that only move forward.',
+   pain:'"Longest substring with at most 2 distinct chars": all substrings is O(n^2) with a check each, O(n^3) naive.',
+   trick:'Works when validity is monotone: adding an element can only make it more violated, removing can only fix it. Then: for each r, add s[r]; while invalid, remove s[l] and l += 1; now the window is the longest valid one ending at r. l and r each move at most n times, O(n).',
+   feel:'"eceba", k = 2. r=0 e, r=1 ec, r=2 ece, r=3 eceb invalid -> drop e, drop c -> "eb"; r=4 eba invalid -> drop e -> "ba". Best 3 ("ece").',
+   code:'cnt = defaultdict(int); l = best = 0\nfor r, ch in enumerate(s):\n    cnt[ch] += 1\n    while len(cnt) > k:\n        cnt[s[l]] -= 1\n        if cnt[s[l]] == 0: del cnt[s[l]]\n        l += 1\n    best = max(best, r - l + 1)',
+   trig:'"longest/shortest contiguous with at most / no more than / without repeating", positive numbers with "sum at least"',
+   q:'When is sliding window WRONG for a sum constraint?',
+   a:'When negatives exist. Adding an element can make the sum go down, so "shrink until valid" is not justified. Use prefix sum + hashmap.'},
+  {t:'Exactly K = atMost(K) - atMost(K-1)', g:'window', hook:'"Exactly" is not monotone. Turn it into two monotone counts.',
+   pain:'Counting subarrays with exactly K distinct: the window trick fails because a valid window can become invalid and valid again as you shrink.',
+   trick:'Count windows with at most K distinct (monotone, easy: every window ending at r after shrinking is valid, add r - l + 1). Subtract the count with at most K - 1. What remains is exactly K.',
+   feel:'[1, 2, 1, 2, 3], K = 2. atMost(2) = 12, atMost(1) = 5. Exactly 2 = 7.',
+   code:'def at_most(k):\n    cnt = defaultdict(int); l = res = 0\n    for r, x in enumerate(nums):\n        cnt[x] += 1\n        while len(cnt) > k:\n            cnt[nums[l]] -= 1\n            if not cnt[nums[l]]: del cnt[nums[l]]\n            l += 1\n        res += r - l + 1\n    return res\nreturn at_most(K) - at_most(K - 1)',
+   trig:'"exactly k distinct", "exactly k odd numbers", "binary subarrays with sum exactly S"',
+   q:'Why is res += r - l + 1 the number of valid windows ending at r?',
+   a:'After shrinking, [l..r] is valid, and any window [l\'..r] with l\' >= l is a sub-window with fewer distinct, so also valid. There are r - l + 1 such starts.'},
+  {t:'Minimum window substring: the "missing" counter', g:'window', hook:'Track one integer, not the whole histogram, to know if the window is valid.',
+   pain:'Comparing two Counters at every step is O(26) or O(alphabet) per step. Fine, but the elegant version is O(1) per step and shows mastery.',
+   trick:'need = Counter(t). missing = len(t). Add s[r]: if need[ch] > 0 it was genuinely needed, missing -= 1; then need[ch] -= 1 (can go negative = surplus). When missing == 0 the window covers t. Shrink from l: need[s[l]] += 1; if it becomes > 0 you just lost a needed char, missing += 1.',
+   feel:'s = "ADOBECODEBANC", t = "ABC". First valid window "ADOBEC" at r = 5. Shrinks and re-grows; the best is "BANC".',
+   code:'need = Counter(t); missing = len(t); l = 0; best = (INF, 0, 0)\nfor r, ch in enumerate(s):\n    if need[ch] > 0: missing -= 1\n    need[ch] -= 1\n    while missing == 0:\n        if r - l + 1 < best[0]: best = (r - l + 1, l, r)\n        need[s[l]] += 1\n        if need[s[l]] > 0: missing += 1\n        l += 1',
+   trig:'"smallest window containing all characters of", "cover all", "permutation in string" (fixed size variant)',
+   q:'Why can need[ch] go negative and why is that fine?',
+   a:'Negative means surplus of that char in the window. Surplus never affects "missing". When shrinking, surplus chars go back toward 0 without touching missing; only crossing from 0 to 1 does.'},
+  // ===== two pointers =====
+  {t:'Two pointers on sorted input', g:'pointers', hook:'Sorted means one comparison eliminates a whole row of candidates.',
+   pain:'Pair with target sum in a sorted array: hashmap works, but uses O(n) memory and ignores the gift of sortedness.',
+   trick:'l at start, r at end. If sum < target, no pair with this l can work with anything left of r (they are smaller), so l += 1. If sum > target, r -= 1. Each step discards an entire pointer position. O(n), O(1) space.',
+   feel:'[1, 2, 4, 7, 11, 15], target 15. 1+15 > 15 -> r. 1+11 < 15 -> l. 2+11 < 15 -> l. 4+11 = 15. Found.',
+   code:'l, r = 0, len(a) - 1\nwhile l < r:\n    s = a[l] + a[r]\n    if s == target: return l, r\n    if s < target: l += 1\n    else: r -= 1',
+   trig:'"sorted array", "pair/triplet with sum", "container with most water", "squares of sorted array"',
+   q:'3Sum: what are the two dedupe rules?',
+   a:'Skip anchor i if nums[i] == nums[i-1]. After a hit, advance l past equal values and r past equal values. Sorting makes duplicates adjacent, that is the whole reason to sort.'},
+  {t:'Read / write pointer: in-place removal', g:'pointers', hook:'The write pointer never overtakes the read pointer, so overwriting is safe.',
+   pain:'Removing elements from a list in place with del is O(n) each, O(n^2) total. Building a new list breaks the "O(1) extra space" requirement.',
+   trick:'r scans every element. w marks where the next kept element goes. If keep(nums[r]): nums[w] = nums[r]; w += 1. Everything before w is the final answer. Order is preserved.',
+   feel:'Move zeroes [0, 1, 0, 3]: r=1 keep 1 -> nums[0] = 1, w=1. r=3 keep 3 -> nums[1] = 3, w=2. Fill the rest with zeros -> [1, 3, 0, 0].',
+   code:'w = 0\nfor r in range(len(nums)):\n    if keep(nums[r]):\n        nums[w] = nums[r]; w += 1\nreturn w   # new length',
+   trig:'"in place", "O(1) extra space", "remove duplicates from sorted", "move zeroes", "compress"',
+   q:'Remove duplicates from a sorted array: what is keep()?',
+   a:'w == 0 or nums[r] != nums[w - 1]. Compare with the last WRITTEN value, not the previous read value.'},
+  {t:'Dutch national flag: three-way partition', g:'pointers', hook:'Three regions, three pointers, one pass, no sort.',
+   pain:'Sort colors (0/1/2) with sort() is O(n log n) and two passes with counting is "not one pass". They want the invariant.',
+   trick:'Invariant: [0, lo) are 0s, [lo, mid) are 1s, (hi, n) are 2s, [mid, hi] unknown. Look at nums[mid]: 0 -> swap with lo, lo++, mid++. 1 -> mid++. 2 -> swap with hi, hi-- (do NOT advance mid, the swapped-in element is unknown).',
+   feel:'[2, 0, 1]: mid sees 2, swap with hi -> [1, 0, 2], hi=1. mid sees 1 -> mid=1. mid sees 0, swap with lo -> [0, 1, 2]. Done.',
+   code:'lo, mid, hi = 0, 0, len(a) - 1\nwhile mid <= hi:\n    if a[mid] == 0: a[lo], a[mid] = a[mid], a[lo]; lo += 1; mid += 1\n    elif a[mid] == 1: mid += 1\n    else: a[mid], a[hi] = a[hi], a[mid]; hi -= 1',
+   trig:'"sort 0s 1s 2s", "partition around pivot" (quicksort), "group by three categories in place"',
+   q:'Why does mid advance after swapping with lo but not after swapping with hi?',
+   a:'The element coming from lo is a known 1 (or mid itself), already classified. The element coming from hi is unexamined.'},
+  {t:'Fast and slow pointers (Floyd)', g:'linked', hook:'A cycle means the fast runner laps the slow one. No visited set needed.',
+   pain:'Detecting a cycle in a linked list with a set is O(n) space. They will ask for O(1).',
+   trick:'slow moves 1, fast moves 2. If there is a cycle, the gap between them shrinks by 1 each step inside the cycle, so they meet. To find the cycle start: reset one pointer to head, move both by 1; they meet at the entry. Same trick finds the middle: when fast hits the end, slow is at the middle.',
+   feel:'1->2->3->4->2 (cycle at 2). slow: 1,2,3,4. fast: 1,3,2,4. Meet at 4. Reset: head=1 and 4 walk: 2 and 2. Entry is 2.',
+   code:'slow = fast = head\nwhile fast and fast.next:\n    slow, fast = slow.next, fast.next.next\n    if slow is fast:\n        slow = head\n        while slow is not fast: slow, fast = slow.next, fast.next\n        return slow   # cycle start\nreturn None',
+   trig:'"cycle", "middle of the list", "kth from end" (gap of k), "find the duplicate number" (array as linked list: i -> nums[i])',
+   q:'Why does resetting to head land on the cycle entry?',
+   a:'Let head-to-entry = a, entry-to-meeting = b, cycle length = c. Fast walked 2(a+b) = a + b + kc, so a = kc - b: walking a from the meeting point lands on the entry, same as walking a from head.'},
+  {t:'Linked list surgery: dummy head and reversal', g:'linked', hook:'A dummy node deletes every "what if the head changes" special case.',
+   pain:'Removing the first node, merging into an empty list, inserting at position 1: each is a branch you will forget under pressure.',
+   trick:'dummy = ListNode(0, head); work with dummy.next; return dummy.next. For reversal, keep prev and cur; the one-liner rotate assigns cur.next, prev, cur in one tuple so nothing is lost.',
+   feel:'Reverse 1->2->3: prev=None. cur=1: 1.next=None, prev=1, cur=2. cur=2: 2.next=1, prev=2, cur=3. cur=3: 3.next=2, prev=3. Return 3->2->1.',
+   code:'def reverse(head):\n    prev, cur = None, head\n    while cur:\n        cur.next, prev, cur = prev, cur, cur.next\n    return prev\n\ndummy = ListNode(0, head); tail = dummy\n# ... build with tail.next = node; tail = tail.next\nreturn dummy.next',
+   trig:'"reverse", "remove nth", "merge", "reorder", "swap pairs", "partition list"',
+   q:'Reverse nodes in k-group: what do you check before reversing a group?',
+   a:'Walk k nodes ahead first; if fewer than k remain, leave them. Then reverse exactly k with prev = the group\'s predecessor, and reconnect the tail to the next group.'},
+  // ===== stack =====
+  {t:'Stack: the most recent unfinished thing', g:'stack', hook:'Nested structure means the innermost open thing closes first. That is a stack.',
+   pain:'Matching brackets, evaluating nested expressions, undo, "decode 3[a2[c]]": without a stack you write a recursive parser or an index mess.',
+   trick:'Push when something opens; pop when it closes and combine with what is below. The stack top is always the current context. For decode string, push (current string, repeat count) at "[" and rebuild at "]".',
+   feel:'"3[a2[c]]": at "[" push ("", 3); build "a"; at "[" push ("a", 2); build "c"; "]" -> "a" + "c"*2 = "acc"; "]" -> "" + "acc"*3.',
+   code:'st = []; cur = \'\'; num = 0\nfor c in s:\n    if c.isdigit(): num = num * 10 + int(c)\n    elif c == \'[\': st.append((cur, num)); cur, num = \'\', 0\n    elif c == \']\': prev, k = st.pop(); cur = prev + cur * k\n    else: cur += c',
+   trig:'"valid parentheses", "nested", "decode", "calculator", "simplify path", "undo", "asteroid collision"',
+   q:'Basic calculator with + - and parentheses: what do you push at "("?',
+   a:'The result so far and the sign before the paren: (res, sign). At ")" compute the inner result and do res = prev + psign * inner.'},
+  {t:'Min stack: carry the answer alongside', g:'stack', hook:'O(1) getMin is impossible by searching. So do not search, remember.',
+   pain:'getMin by scanning the stack is O(n). Storing a single global min breaks when that min is popped.',
+   trick:'A second stack where each entry is "min of everything at or below me". Push min(x, top of min stack). Pop both together. The min stack top is always the current min.',
+   feel:'push 5, 3, 7, 3, 2: mins 5, 3, 3, 3, 2. Pop 2: min is 3. Pop 3: still 3 (the older 3 is below). Pop 7, pop 3: min 5.',
+   code:'def push(self, x):\n    self.st.append(x)\n    self.mn.append(x if not self.mn else min(x, self.mn[-1]))\ndef pop(self):\n    self.mn.pop(); return self.st.pop()\ndef getMin(self): return self.mn[-1]',
+   trig:'"O(1) min/max", "design a stack that supports", "max stack" (harder: heap + lazy delete)',
+   q:'Why not store a single min variable and recompute on pop?',
+   a:'Recompute is O(n). The parallel stack costs O(n) memory but gives true O(1) per op. Memory can be reduced by pushing to mn only when x <= current min.'},
+  {t:'Monotonic stack: next greater element', g:'stack', hook:'Keep only candidates that could still be someone\'s answer. Kill the rest on sight.',
+   pain:'"For each element, the next greater to its right" is O(n^2) with a rescan per element.',
+   trick:'Scan left to right with a stack of indices whose values are decreasing. When x arrives, every stack element smaller than x has just found its answer (x). Pop them and record. Push x. Each index is pushed once and popped once: O(n). The invariant: the stack holds elements still waiting, in decreasing order.',
+   feel:'[2, 1, 2, 4, 3]: push 0. 1 < 2 push. 2: pop idx1 (ans 2), pop idx0 (ans 2), push. 4: pop idx2 (ans 4), push. 3: push. Left in stack: 3, 4 -> -1.',
+   code:'res = [-1] * n; st = []\nfor i, x in enumerate(nums):\n    while st and nums[st[-1]] < x:\n        res[st.pop()] = i\n    st.append(i)',
+   trig:'"next/previous greater/smaller", "days until warmer", "stock span", "largest rectangle", "trapping rain water", "remove k digits"',
+   q:'Largest rectangle in histogram: what does the stack hold and why the sentinel 0 at the end?',
+   a:'Indices with increasing heights. A bar is popped when a shorter bar arrives; its width spans from the previous shorter bar to the current index. The trailing 0 forces every bar out so every rectangle is measured.'},
+  {t:'Monotonic deque: max of every window', g:'stack', hook:'A monotonic stack that also expires from the front.',
+   pain:'Max of every window of size k with a heap is O(n log k) and needs lazy deletion. They want O(n).',
+   trick:'Deque of indices, values decreasing front to back. New x: pop from the back everything <= x (they can never be the max while x is in the window). Push x. If the front index left the window (dq[0] <= i - k), pop front. Front is the max.',
+   feel:'[1, 3, -1, -3, 5], k = 3. i=1: 3 kills 1. i=2: [3, -1]. Window max 3. i=3: [3, -1, -3] max 3. i=4: 5 kills all, max 5.',
+   code:'dq, out = deque(), []\nfor i, x in enumerate(nums):\n    while dq and nums[dq[-1]] <= x: dq.pop()\n    dq.append(i)\n    if dq[0] <= i - k: dq.popleft()\n    if i >= k - 1: out.append(nums[dq[0]])',
+   trig:'"maximum/minimum in each sliding window", "shortest subarray with sum at least K" (deque on prefix sums)',
+   q:'Why is it safe to discard elements smaller than the new one?',
+   a:'The new element is to their right and larger, so it will outlive them in every future window and beat them. They can never be an answer again.'},
+  // ===== binary search =====
+  {t:'Binary search: hunt the boundary, not the value', g:'search', hook:'False false false TRUE true true. Find the first TRUE.',
+   pain:'Classic "find x" binary search breaks the moment the question changes to "first position >= x" or "last valid". Off-by-ones everywhere.',
+   trick:'Define a predicate that is False then True across the range. Keep [lo, hi) such that the answer is inside. mid = (lo + hi) // 2; if pred(mid): hi = mid else lo = mid + 1. Ends with lo = first True. bisect_left is exactly this with pred = arr[mid] >= x.',
+   feel:'[1, 3, 3, 5], first index >= 3: pred = [F, T, T, T]. lo=0, hi=4: mid=2 T -> hi=2; mid=1 T -> hi=1; mid=0 F -> lo=1. Answer 1.',
+   code:'lo, hi = 0, len(arr)          # half-open\nwhile lo < hi:\n    mid = (lo + hi) // 2\n    if pred(mid): hi = mid\n    else: lo = mid + 1\nreturn lo   # first index where pred is True, or len(arr)',
+   trig:'"sorted", "first/last occurrence", "insert position", "peak", "rotated", "minimum X such that"',
+   q:'How do you get "last True" from this template?',
+   a:'first_true(not pred) - 1. Or use bisect_right - 1. Do not write a second template from scratch; you will get the +1 wrong.'},
+  {t:'Binary search on the answer', g:'search', hook:'You cannot compute the answer, but you can check a guess. So guess smartly.',
+   pain:'"Minimum ship capacity to finish in D days": the capacity is a number up to 10^9. Trying every value is impossible.',
+   trick:'The answer space is monotone: if capacity C works, every larger C works. So feasible(C) is F...F T...T. Binary search over C, calling a greedy feasibility check (simulate loading, count days). O(n log(range)).',
+   feel:'weights [1..10], D = 5. lo = max = 10, hi = sum = 55. mid = 32 feasible -> hi. mid = 21 feasible -> hi. mid = 15 feasible -> hi. mid = 12 no -> lo = 13. mid = 14 no -> lo = 15. Answer 15.',
+   code:'def feasible(cap):\n    days, cur = 1, 0\n    for w in weights:\n        if cur + w > cap: days += 1; cur = 0\n        cur += w\n    return days <= D\nlo, hi = max(weights), sum(weights)\nwhile lo < hi:\n    mid = (lo + hi) // 2\n    if feasible(mid): hi = mid\n    else: lo = mid + 1\nreturn lo',
+   trig:'"minimize the maximum", "maximize the minimum", "minimum speed/capacity/days/time to", "kth smallest in sorted matrix"',
+   q:'Koko eating bananas: what are lo and hi and why?',
+   a:'lo = 1 (slowest possible speed), hi = max(piles) (any faster is pointless, one pile per hour is the floor). Feasible(k) = sum(ceil(p / k)) <= h.'},
+  {t:'Rotated sorted array: one half is always sorted', g:'search', hook:'Pivot breaks the array into two sorted runs; mid lands in one of them.',
+   pain:'Finding the pivot first then searching is two passes and twice the off-by-one risk.',
+   trick:'Compare nums[lo] <= nums[mid]: then the left half is sorted. If target is inside that sorted range, go left; otherwise go right. Symmetric when the right half is sorted. One binary search.',
+   feel:'[4, 5, 6, 7, 0, 1, 2], target 0. mid=7, left [4..7] sorted, 0 not in it -> right. lo=4, mid=1, left [0..1] sorted, 0 in it -> left. Found at 4.',
+   code:'while lo <= hi:\n    mid = (lo + hi) // 2\n    if nums[mid] == target: return mid\n    if nums[lo] <= nums[mid]:\n        if nums[lo] <= target < nums[mid]: hi = mid - 1\n        else: lo = mid + 1\n    else:\n        if nums[mid] < target <= nums[hi]: lo = mid + 1\n        else: hi = mid - 1',
+   trig:'"rotated", "shifted sorted array", "find minimum in rotated"',
+   q:'With duplicates, why can it degrade to O(n)?',
+   a:'When nums[lo] == nums[mid] == nums[hi] you cannot tell which half is sorted, so you shrink both ends by one. Worst case (all equal) that is linear.'},
+  // ===== sorting =====
+  {t:'Sort as the first move', g:'sorting', hook:'Sorting costs n log n and buys you adjacency. Duplicates touch, ranges line up, greedy becomes legal.',
+   pain:'Many "impossible without extra memory" problems become one pass after a sort: merge intervals, 3Sum dedupe, meeting rooms, non-overlapping selection.',
+   trick:'Ask "if this were sorted, what would be easy?" If the answer is "everything", sort with a key. Python sort is stable; key tuples give multi-criteria order for free; negate a field for descending.',
+   feel:'Intervals [[1,3],[8,10],[2,6]] sorted by start -> [1,3],[2,6] overlap is now adjacent: merge to [1,6].',
+   code:'arr.sort(key=lambda x: (x[0], -x[1]))   # asc, then desc\nstrs.sort(key=len)\nitems.sort(key=cmp_to_key(compare))    # custom',
+   trig:'"intervals", "meeting", "custom order", "closest pairs", "k-th smallest" (or heap)',
+   q:'When do you sort by END instead of start?',
+   a:'Greedy selection of maximum non-overlapping intervals (activity selection): finishing earliest leaves the most room. Merge and sweep use start.'},
+  {t:'Quickselect: kth element in O(n) average', g:'sorting', hook:'Sorting everything to find one position is wasteful. Partition and recurse into one side only.',
+   pain:'Kth largest with sort is O(n log n). Heap of size k is O(n log k). "Can you do O(n)?"',
+   trick:'Pick a random pivot, partition so smaller elements go left. If the pivot lands at index k, done. Else recurse into the side containing k. Expected work n + n/2 + n/4 ... = O(n).',
+   feel:'[3, 2, 1, 5, 6, 4], k = 2 (0-indexed smallest). Pivot 4 -> [3,2,1] 4 [5,6]. Pivot index 3 > 2 -> recurse left.',
+   code:'def quickselect(a, k):\n    lo, hi = 0, len(a) - 1\n    while True:\n        p = random.randint(lo, hi); a[p], a[hi] = a[hi], a[p]\n        s = lo\n        for i in range(lo, hi):\n            if a[i] < a[hi]: a[s], a[i] = a[i], a[s]; s += 1\n        a[s], a[hi] = a[hi], a[s]\n        if s == k: return a[s]\n        if s < k: lo = s + 1\n        else: hi = s - 1',
+   trig:'"kth largest/smallest", "top k" when they push past the heap, "median" of an unsorted array',
+   q:'Worst case and how to avoid it?',
+   a:'O(n^2) with adversarial pivots. Random pivot makes that astronomically unlikely; median-of-medians guarantees O(n) but is slower in practice. Say both, code the random one.'},
+  // ===== heaps =====
+  {t:'Heap: O(log n) access to the extreme', g:'heap', hook:'When you keep asking "what is the smallest right now" while things keep arriving.',
+   pain:'Sorting after every insert is O(n log n) per op. A sorted list insert is O(n). A stream of 10^6 items kills both.',
+   trick:'A heap is a partially sorted tree where the root is the minimum. Push and pop are O(log n), peek O(1). Python heapq is a min-heap; negate values for a max-heap; push tuples to carry payload (priority first).',
+   feel:'Kth largest in a stream: keep a min-heap of the k largest so far. The root is the kth largest. New value: push, and if size > k pop the smallest.',
+   code:'h = []\nfor x in nums:\n    heapq.heappush(h, x)\n    if len(h) > k: heapq.heappop(h)\nreturn h[0]   # kth largest',
+   trig:'"top k", "k largest", "stream", "priority", "closest", "schedule by earliest", "merge sorted"',
+   q:'Why a MIN-heap of size k for the k LARGEST?',
+   a:'You need to evict the smallest of your k candidates cheaply. The min-heap keeps the weakest candidate at the root, ready to be replaced.'},
+  {t:'K-way merge with a heap', g:'heap', hook:'K sorted streams. The global next element is the smallest of K heads.',
+   pain:'Merging K sorted lists pairwise is O(nK). Concatenate and sort is O(n log n) and ignores that they are already sorted.',
+   trick:'Heap of (value, list index, node) for the head of every list. Pop the smallest, append to output, push that list\'s next element. Each element enters the heap once: O(n log K).',
+   feel:'Lists [1,4], [2,5], [3]. Heap {1,2,3} pop 1 push 4 -> {2,3,4} pop 2 push 5 -> {3,4,5} ... output 1,2,3,4,5.',
+   code:'h = [(node.val, i, node) for i, node in enumerate(lists) if node]\nheapq.heapify(h)\nwhile h:\n    val, i, node = heapq.heappop(h)\n    tail.next = node; tail = node\n    if node.next: heapq.heappush(h, (node.next.val, i, node.next))',
+   trig:'"merge k sorted", "smallest range covering k lists", "merge logs from k servers", "k pairs with smallest sums"',
+   q:'Why the list index in the tuple?',
+   a:'Tie-break. If two values are equal, Python compares the next tuple element; ListNode objects are not comparable and you get a TypeError. The index is always comparable.'},
+  {t:'Two heaps: running median', g:'heap', hook:'Split the stream into a "lower half" and "upper half" and keep them balanced.',
+   pain:'Median of a stream by sorting every time is O(n log n) per query. Insertion into a sorted list is O(n).',
+   trick:'low = max-heap (negated) of the smaller half, high = min-heap of the larger half. Push to low, move low\'s max to high, then if high is bigger move its min back. Sizes differ by at most 1, and every low element <= every high element. Median is low\'s top (odd) or the average of both tops.',
+   feel:'Add 5, 15, 1, 3: low {5} | high {} -> med 5. low {5} high {15} -> 10. low {1,5} high {15} -> 5. low {1,3} high {5,15} -> 4.',
+   code:'def addNum(self, x):\n    heapq.heappush(self.low, -x)\n    heapq.heappush(self.high, -heapq.heappop(self.low))\n    if len(self.high) > len(self.low):\n        heapq.heappush(self.low, -heapq.heappop(self.high))\ndef findMedian(self):\n    if len(self.low) > len(self.high): return -self.low[0]\n    return (-self.low[0] + self.high[0]) / 2',
+   trig:'"median of a stream", "sliding window median" (add lazy deletion), "balance two groups"',
+   q:'Why push to low first and then move the max across, instead of deciding where x belongs?',
+   a:'It guarantees the ordering invariant in one motion: whatever is largest in low is definitely allowed in high. Deciding by comparison first is also fine but has more branches to get wrong.'},
+  // ===== intervals =====
+  {t:'Merge intervals', g:'intervals', hook:'Sort by start, then only the last merged interval can overlap the next one.',
+   pain:'Checking every pair for overlap is O(n^2). Without sorting you cannot know which intervals are neighbours.',
+   trick:'After sorting by start, walk in order. If the current start <= last end, they overlap: extend last end to max. Otherwise start a new interval. The overlap test for two intervals is a.start <= b.end and b.start <= a.end.',
+   feel:'[[1,3],[2,6],[8,10],[15,18]] -> [1,3] and [2,6] overlap -> [1,6]. 8 > 6 new. 15 > 10 new. Result 3 intervals.',
+   code:'intervals.sort()\nout = []\nfor s, e in intervals:\n    if out and s <= out[-1][1]: out[-1][1] = max(out[-1][1], e)\n    else: out.append([s, e])',
+   trig:'"overlapping", "merge", "insert interval", "free time", "ranges", "bookings"',
+   q:'Why max(out[-1][1], e) and not just e?',
+   a:'A later interval can be fully inside the previous one: [1,10] then [2,3]. Taking e would shrink the merged end to 3.'},
+  {t:'Meeting rooms II: heap of end times', g:'intervals', hook:'A room frees up when its meeting ends. Reuse the earliest-freed room.',
+   pain:'"Minimum rooms" is the maximum number of meetings alive at once. Checking every timestamp is slow and vague.',
+   trick:'Sort by start. Min-heap holds end times of running meetings. For each meeting, if the earliest end <= this start, that room is free: replace it. Otherwise push a new room. Heap size at the end is the answer.',
+   feel:'[[0,30],[5,10],[15,20]]: push 30. 5 < 30 push 10 -> 2 rooms. 15 >= 10 replace -> heap {20, 30}. Answer 2.',
+   code:'intervals.sort(); h = []\nfor s, e in intervals:\n    if h and h[0] <= s: heapq.heapreplace(h, e)\n    else: heapq.heappush(h, e)\nreturn len(h)',
+   trig:'"minimum rooms/platforms/servers", "max concurrent", "can attend all" (just check adjacent after sort)',
+   q:'Alternative without a heap?',
+   a:'Sweep line: events (start, +1) and (end, -1) sorted with ends before starts on ties; running sum; its max is the answer. Also gives the time of peak load.'},
+  {t:'Sweep line: turn intervals into events', g:'intervals', hook:'Stop thinking in intervals. Think in moments where something changes.',
+   pain:'"How many intervals cover point x", "busiest time", "k-booking" get messy when you manipulate intervals directly.',
+   trick:'Every interval becomes two events: +1 at start, -1 at end. Sort events by time (decide end-before-start for touching intervals). Walk them keeping a running count. Peaks, gaps and coverage all fall out of the running count.',
+   feel:'[1,4],[2,5],[7,9]: events (1,+1),(2,+1),(4,-1),(5,-1),(7,+1),(9,-1). Count: 1,2,1,0,1,0. Peak 2 at time 2.',
+   code:'events = []\nfor s, e in intervals: events += [(s, 1), (e, -1)]\nevents.sort(key=lambda t: (t[0], t[1]))   # -1 before +1 on ties\ncur = best = 0\nfor t, d in events:\n    cur += d; best = max(best, cur)',
+   trig:'"maximum overlap", "at any moment", "calendar k-booking", "car pooling" (difference array on a timeline)',
+   q:'Why sort -1 before +1 at the same timestamp?',
+   a:'For half-open intervals [s, e), a meeting ending at 10 and another starting at 10 do not overlap. Processing the -1 first avoids counting them together.'},
+  // ===== trees =====
+  {t:'Tree DFS: design the return value', g:'tree', hook:'Ask: what does a child need to hand its parent so the parent can decide?',
+   pain:'Diameter, balanced, max path sum, validate BST: people write a separate helper per query and lose the recursion.',
+   trick:'One post-order function. It returns the minimal info the parent needs (height, or gain, or (min, max, ok)). The global answer, if different from the return value, lives in a nonlocal variable updated at each node. Diameter: return height, update best with left + right.',
+   feel:'Diameter of 1(2(4,5),3): at 2 heights 1 and 1 -> best 2, return 2. At 1: left 2, right 1 -> best 3, return 3. Diameter 3 edges (4-2-1-3).',
+   code:'best = 0\ndef depth(n):\n    nonlocal best\n    if not n: return 0\n    l, r = depth(n.left), depth(n.right)\n    best = max(best, l + r)\n    return 1 + max(l, r)',
+   trig:'"diameter", "balanced", "max path sum", "longest univalue path", "count good nodes", "is BST"',
+   q:'Max path sum: why max(gain, 0) on each side?',
+   a:'A negative branch only hurts. Dropping it is the same as choosing not to extend the path into that child. The path through this node is val + left + right; the value returned upward can only include one side.'},
+  {t:'BFS by level', g:'tree', hook:'Process exactly len(queue) nodes per round and you get one level per round.',
+   pain:'Level order, right side view, zigzag, minimum depth: people tag nodes with depth and sort. Unnecessary.',
+   trick:'Queue seeded with root. Loop: size = len(q); process exactly size nodes, pushing their children. Everything pushed in this round is the next level. Last node processed in a round is the right side view; first leaf found is the min depth.',
+   feel:'3(9, 20(15, 7)): round 1 [3] -> push 9, 20. Round 2 [9, 20] -> push 15, 7. Round 3 [15, 7]. Levels: [3], [9,20], [15,7].',
+   code:'q = deque([root]); out = []\nwhile q:\n    level = []\n    for _ in range(len(q)):\n        n = q.popleft(); level.append(n.val)\n        if n.left: q.append(n.left)\n        if n.right: q.append(n.right)\n    out.append(level)',
+   trig:'"level order", "by level", "right side view", "zigzag", "minimum depth", "closest leaf", "connect next pointers"',
+   q:'Why is BFS better than DFS for minimum depth?',
+   a:'BFS stops at the first leaf it meets, which is the shallowest. DFS must explore everything (or prune carefully).'},
+  {t:'BST: the invariant is a range, not a parent check', g:'tree', hook:'Every node is bounded by ALL its ancestors, not just its parent.',
+   pain:'Checking node.left.val < node.val < node.right.val passes trees that are not BSTs (a grandchild on the wrong side).',
+   trick:'Pass (lo, hi) bounds down. Going left, hi becomes node.val. Going right, lo becomes node.val. Each node must satisfy lo < val < hi. Alternative: inorder traversal must be strictly increasing.',
+   feel:'5(1, 4(3, 6)): 4 is right of 5 but 4 < 5. Range check at 4: lo = 5, 4 not > 5. Invalid. Parent-only check would pass 4 (3 < 4 < 6).',
+   code:'def valid(n, lo=-INF, hi=INF):\n    if not n: return True\n    if not lo < n.val < hi: return False\n    return valid(n.left, lo, n.val) and valid(n.right, n.val, hi)',
+   trig:'"validate BST", "kth smallest in BST" (inorder), "BST iterator", "LCA in BST" (walk down by value), "search/insert/delete"',
+   q:'Kth smallest in a BST in O(h + k) time. How?',
+   a:'Iterative inorder with a stack: push all left, pop, count, go right. Stop at the kth pop. You never touch more than h + k nodes.'},
+  {t:'Lowest common ancestor', g:'tree', hook:'Return the target upward. The first node that receives targets from both sides is the LCA.',
+   pain:'Storing paths to both nodes and comparing is O(n) memory and two traversals.',
+   trick:'lca(node): if node is None or node is p or node is q, return node. Get l = lca(left), r = lca(right). If both non-null, this node is the LCA. Otherwise return whichever is non-null (it carries the found target or the LCA upward).',
+   feel:'3(5(6, 2), 1), p = 5, q = 1. At 3: left returns 5, right returns 1 -> both -> 3.',
+   code:'def lca(root, p, q):\n    if not root or root is p or root is q: return root\n    l, r = lca(root.left, p, q), lca(root.right, p, q)\n    return root if l and r else l or r',
+   trig:'"lowest common ancestor", "distance between two nodes", "with parent pointers" (two pointers switching heads)',
+   q:'BST version in O(h)?',
+   a:'Walk from root: if both p and q are smaller go left, both larger go right, otherwise the current node is the LCA.'},
+  {t:'Serialize a tree: preorder with null markers', g:'tree', hook:'Preorder plus explicit nulls is enough to rebuild the exact shape.',
+   pain:'Preorder alone is ambiguous. Preorder + inorder needs unique values. Level order with nulls wastes space on deep trees.',
+   trick:'Serialize: write val, recurse left, recurse right, write "#" for None. Deserialize: consume tokens in the same order; a "#" returns None. Iterators make the consumption order automatic.',
+   feel:'1(2, 3(4, 5)) -> "1,2,#,#,3,4,#,#,5,#,#". Rebuild reads 1, then left subtree 2 (then #,#), then 3...',
+   code:'def ser(n): return \'#\' if not n else f\'{n.val},{ser(n.left)},{ser(n.right)}\'\ndef des(s):\n    it = iter(s.split(\',\'))\n    def build():\n        v = next(it)\n        if v == \'#\': return None\n        n = TreeNode(int(v)); n.left = build(); n.right = build(); return n\n    return build()',
+   trig:'"serialize", "encode/decode tree", "construct from preorder and inorder", "clone"',
+   q:'Build from preorder + inorder: what does the inorder index of the root give you?',
+   a:'The split: everything left of it in inorder is the left subtree, everything right is the right subtree. Consume preorder in order for roots.'},
+  {t:'Trie: shared prefixes as a tree', g:'tree', hook:'A hash set answers "is this word here". A trie answers "does anything start with this".',
+   pain:'Autocomplete, "search with wildcard", word search on a grid with 10^4 words: hash sets cannot prune by prefix.',
+   trick:'Each node is a dict of children plus an end flag. Insert walks or creates one node per char. Prefix query walks the prefix and answers from that subtree. Word Search II: DFS the grid while walking the trie, stop the moment the prefix is not in the trie.',
+   feel:'Insert "cat", "car": root -> c -> a -> {t: end, r: end}. starts_with("ca") walks 2 nodes and says yes.',
+   code:'root = {}\nfor w in words:\n    node = root\n    for ch in w: node = node.setdefault(ch, {})\n    node[\'$\'] = True\n# starts_with: walk chars, return False if a char is missing',
+   trig:'"prefix", "autocomplete", "starts with", "word dictionary with wildcard", "many words against a grid"',
+   q:'Why does Word Search II need a trie and not a set of words?',
+   a:'With a set you would DFS every path up to max word length for every word: exponential. The trie prunes any path that is not a prefix of some word, and finds all words in one grid traversal.'},
+  // ===== graphs =====
+  {t:'Adjacency list: how you hold a graph', g:'graph', hook:'The first question in every graph interview: "how will you represent it?"',
+   pain:'A matrix is O(V^2) memory and O(V) to list neighbours. Edge lists cannot answer "who is next to u" without a scan.',
+   trick:'dict or list of lists: g[u] = [neighbours]. O(V + E) memory, O(deg) to iterate neighbours. Undirected: add both directions. Weighted: store (v, w). Grids are implicit graphs: neighbours are computed from (r, c), never stored.',
+   feel:'Edges (0,1), (1,2): g = [[1], [0, 2], [1]]. Directed "b before a" for prerequisites [a, b]: g[b].append(a).',
+   code:'g = [[] for _ in range(n)]\nfor u, v in edges:\n    g[u].append(v); g[v].append(u)   # drop 2nd for directed\n# labels: g = defaultdict(list)\n# grid: for dr, dc in ((1,0),(-1,0),(0,1),(0,-1))',
+   trig:'"nodes and edges", "prerequisites", "friends", "cities and roads", "grid of cells"',
+   q:'When is a matrix the right call?',
+   a:'Dense graphs with small V (a few hundred), Floyd-Warshall, or when you need O(1) "is there an edge u-v" and cannot afford a set per node.'},
+  {t:'BFS: shortest path when every step costs 1', g:'graph', hook:'Explore in rings. The first time you touch a node is the shortest way to it.',
+   pain:'DFS finds a path, not the shortest. Dijkstra works but is O(E log V) overkill for unit weights.',
+   trick:'Queue. Mark visited when you ENQUEUE, not when you pop, or the same node enters the queue many times. Distance of a neighbour = distance of current + 1. On grids, cells are nodes and 4 directions are edges.',
+   feel:'Grid from (0,0): ring 0 = start, ring 1 = its neighbours, ring 2 = theirs. Target found in ring d has distance d.',
+   code:'dist = {src: 0}; q = deque([src])\nwhile q:\n    u = q.popleft()\n    for v in g[u]:\n        if v not in dist:\n            dist[v] = dist[u] + 1; q.append(v)',
+   trig:'"fewest moves/steps", "shortest path" with unweighted edges, "minimum number of", "levels", "nearest"',
+   q:'Word Ladder: what are the nodes and edges?',
+   a:'Nodes are words, edges connect words differing by one letter. Generate neighbours through wildcard buckets (h*t) instead of comparing all pairs.'},
+  {t:'Multi-source BFS', g:'graph', hook:'Start the BFS from ALL sources at once, at distance 0.',
+   pain:'"Distance from every cell to the nearest gate": BFS from every cell is O(cells^2). BFS from every gate separately is O(gates * cells).',
+   trick:'Push every source into the queue before starting. The BFS then expands all of them together; each cell is reached first by its nearest source. One traversal, O(cells).',
+   feel:'Rotting oranges: all rotten cells start in the queue. Each round rots the fresh neighbours. The number of rounds is the time. Any fresh left -> -1.',
+   code:'q = deque((r, c, 0) for r in range(R) for c in range(C) if grid[r][c] == 2)\nwhile q:\n    r, c, t = q.popleft()\n    for nr, nc in nbrs(r, c):\n        if grid[nr][nc] == 1:\n            grid[nr][nc] = 2; q.append((nr, nc, t + 1))',
+   trig:'"nearest X for every cell", "spread", "rot", "walls and gates", "01 matrix", "as far from land as possible"',
+   q:'Why does starting all sources at 0 give correct nearest distances?',
+   a:'BFS processes nodes in non-decreasing distance. A cell at distance d from its nearest source is popped in round d, before any farther source could reach it.'},
+  {t:'DFS: components, flood fill, "everything reachable"', g:'graph', hook:'Go as deep as you can, mark as you go. Each fresh start is a new component.',
+   pain:'Counting islands, regions, provinces: you need "all cells connected to this one", repeatedly, without recounting.',
+   trick:'Loop over every node. If unvisited, count += 1 and DFS from it, marking everything reachable. Marking in place (flip 1 to 0) saves the visited set. Iterative with a stack avoids recursion limits on big grids.',
+   feel:'Grid with two blobs of 1s: first 1 found -> DFS sinks the whole blob -> count 1. Next unsunk 1 -> count 2.',
+   code:'def sink(r, c):\n    st = [(r, c)]; grid[r][c] = \'0\'\n    while st:\n        r, c = st.pop()\n        for nr, nc in nbrs(r, c):\n            if grid[nr][nc] == \'1\':\n                grid[nr][nc] = \'0\'; st.append((nr, nc))\ncount = sum(1 for r in range(R) for c in range(C)\n            if grid[r][c] == \'1\' and not sink(r, c))',
+   trig:'"number of islands/regions/provinces", "flood fill", "surrounded regions", "max area"',
+   q:'Surrounded regions: why flood from the border first?',
+   a:'Any O connected to the border cannot be captured. Marking those first, then flipping every other O, avoids the impossible question "is this region enclosed" per cell.'},
+  {t:'Union-Find: are these connected, fast, as edges arrive', g:'graph', hook:'A forest of sets where find climbs to the root and union links roots.',
+   pain:'"After each new edge, how many components?" Re-running BFS after every edge is O(E * (V + E)).',
+   trick:'parent[x] = x initially. find(x) follows parents to the root, compressing the path on the way. union(a, b) links one root under the other (by size). If find(a) == find(b) already, the edge closes a cycle. Nearly O(1) amortized per op.',
+   feel:'Redundant connection: add edges one by one; the first edge whose endpoints are already in the same set is the redundant one.',
+   code:'parent = list(range(n))\ndef find(x):\n    while parent[x] != x:\n        parent[x] = parent[parent[x]]; x = parent[x]\n    return x\ndef union(a, b):\n    ra, rb = find(a), find(b)\n    if ra == rb: return False\n    parent[rb] = ra; return True',
+   trig:'"connected", "same group", "merge accounts", "redundant edge", "number of components", "valid tree", "Kruskal"',
+   q:'DSU vs BFS for components: when does each win?',
+   a:'Static graph, one query: BFS/DFS is simpler. Edges arriving over time, or many connectivity queries, or "merge groups": DSU.'},
+  {t:'Topological sort (Kahn\'s)', g:'graph', hook:'Peel off everything that has no prerequisites left. Repeat. If you get stuck, there is a cycle.',
+   pain:'"Can you finish all courses" and "give me an order" look like search problems. They are ordering problems on a DAG.',
+   trick:'indegree[v] = number of prerequisites. Queue every node with indegree 0. Pop, output, decrement each neighbour; any neighbour hitting 0 is free: enqueue. Output length < V means a cycle. O(V + E).',
+   feel:'Courses: 1 needs 0, 2 needs 0 and 1. indeg [0,1,2]. Queue [0]. Pop 0 -> indeg [0,0,1], push 1. Pop 1 -> indeg [0,0,0], push 2. Order 0,1,2.',
+   code:'indeg = [0] * n\nfor u in range(n):\n    for v in g[u]: indeg[v] += 1\nq = deque(u for u in range(n) if indeg[u] == 0); order = []\nwhile q:\n    u = q.popleft(); order.append(u)\n    for v in g[u]:\n        indeg[v] -= 1\n        if indeg[v] == 0: q.append(v)\nreturn order if len(order) == n else []',
+   trig:'"prerequisites", "dependencies", "build order", "must come before", "alien dictionary", "detect cycle in directed graph"',
+   q:'Lexicographically smallest valid order?',
+   a:'Swap the deque for a min-heap. Everything else is identical.'},
+  {t:'Dijkstra: BFS with a priority queue', g:'graph', hook:'When steps cost different amounts, "first reached" is no longer "cheapest reached". Let a heap pick.',
+   pain:'BFS on weighted graphs gives the fewest edges, not the least cost. You need to always expand the currently cheapest frontier node.',
+   trick:'Heap of (dist, node). Pop the smallest. If it is stale (dist > dist[u]) skip. Relax each neighbour: if dist[u] + w < dist[v], update and push. Non-negative weights only, or the "smallest first" guarantee breaks. O(E log V).',
+   feel:'Network delay time: run Dijkstra from the source; answer is max(dist) if all reachable, else -1.',
+   code:'dist = [INF] * n; dist[src] = 0; h = [(0, src)]\nwhile h:\n    d, u = heapq.heappop(h)\n    if d > dist[u]: continue\n    for v, w in g[u]:\n        if d + w < dist[v]:\n            dist[v] = d + w; heapq.heappush(h, (dist[v], v))',
+   trig:'"weighted", "cost", "time to reach", "cheapest", "minimum effort path" (minimax variant), "probability" (max-heap on product)',
+   q:'Why the stale check instead of a decrease-key?',
+   a:'Python heapq has no decrease-key. Push duplicates and ignore the old ones when popped: same complexity, simpler code.'},
+  // ===== backtracking =====
+  {t:'Backtracking: choose, explore, un-choose', g:'backtrack', hook:'Build the answer one decision at a time and undo the decision when you come back.',
+   pain:'Subsets, permutations, combinations, N-Queens: generating with nested loops does not scale to variable depth.',
+   trick:'A recursive function with a path. At each level, iterate the choices; append, recurse, pop. For subsets, the choice is "next index to include" starting from start (avoids duplicates in different order). For permutations, a used[] array. Prune early: sort, and break when the remaining target goes negative.',
+   feel:'Subsets of [1,2,3]: [] -> [1] -> [1,2] -> [1,2,3], back, [1,3], back, [2] -> [2,3], [3]. Every node of the tree is an answer.',
+   code:'out, path = [], []\ndef bt(start):\n    out.append(path[:])\n    for i in range(start, len(nums)):\n        path.append(nums[i])\n        bt(i + 1)\n        path.pop()\nbt(0)',
+   trig:'"all subsets/permutations/combinations", "generate all", "N small (<= 20)", "constraint satisfaction", "word search"',
+   q:'Duplicates in input, unique subsets in output. What is the skip rule?',
+   a:'Sort first. In the loop: if i > start and nums[i] == nums[i-1]: continue. Equal values may only be picked in one order at a given depth.'},
+  // ===== DP =====
+  {t:'DP: a decision at every state, memoized', g:'dp', hook:'Recursion that repeats subproblems is exponential. Remember answers and it collapses to states x transitions.',
+   pain:'Climb stairs / house robber / coin change written as plain recursion is 2^n. The same subproblem is solved millions of times.',
+   trick:'Define the state = the minimum info that describes "where am I" (index, remaining amount, last choice). Write the recurrence as the best of the choices at this state. Memoize with @cache. Convert to a table if asked; keep two rows if only the previous row is used.',
+   feel:'House robber: rob(i) = max(rob(i-1), rob(i-2) + nums[i]). Two variables rolling forward. [2, 7, 9, 3, 1] -> 2, 7, 11, 11, 12.',
+   code:'prev = cur = 0\nfor x in nums:\n    prev, cur = cur, max(cur, prev + x)\nreturn cur\n\n# memo form:\n@cache\ndef f(i): return 0 if i < 0 else max(f(i-1), f(i-2) + nums[i])',
+   trig:'"count the ways", "minimum/maximum ... to reach", "can it be done" with overlapping subproblems, "choose or skip"',
+   q:'What sentence do you say for the complexity of any DP?',
+   a:'"Number of states times work per transition." House robber: n states, O(1) transition -> O(n).'},
+  {t:'0/1 knapsack shape: take it or leave it', g:'dp', hook:'dp[capacity] over items, capacity loop backwards so each item is used at most once.',
+   pain:'Partition equal subset sum, target sum, "can we reach exactly S": people try greedy and fail.',
+   trick:'dp[s] = can we make sum s. For each item x, for s from target down to x: dp[s] |= dp[s - x]. Going downward means dp[s - x] is still from BEFORE this item, so x is counted once. Going upward would allow reuse (unbounded knapsack).',
+   feel:'[1, 5, 11, 5], target 11: after 1 {0,1}; after 5 {0,1,5,6}; after 11 {..,11}; reachable -> partition exists.',
+   code:'dp = [True] + [False] * target\nfor x in nums:\n    for s in range(target, x - 1, -1):\n        dp[s] = dp[s] or dp[s - x]\nreturn dp[target]',
+   trig:'"subset sum", "partition into two equal", "target sum with +/-", "minimum difference of two groups", "capacity"',
+   q:'Coin change (min coins, unlimited reuse): which direction is the inner loop?',
+   a:'Upward, from coin to amount. Reuse is allowed, so dp[a - c] may already include this coin.'},
+  {t:'Two strings, position by position: 2D DP', g:'dp', hook:'State (i, j) = "prefix i of A vs prefix j of B". Every string-pair question lives on this grid.',
+   pain:'LCS, edit distance, interleaving, regex matching: brute force over alignments is exponential.',
+   trick:'dp[i][j] answers the question for A[:i] and B[:j]. If A[i-1] == B[j-1], extend from dp[i-1][j-1]. Otherwise combine dp[i-1][j] and dp[i][j-1] (and dp[i-1][j-1] for replace). Fill row by row; keep two rows for space.',
+   feel:'Edit distance "horse" -> "ros": dp[5][3] = 3 (replace h->r, delete r, delete e).',
+   code:'for i in range(1, m + 1):\n    for j in range(1, n + 1):\n        if a[i-1] == b[j-1]: dp[i][j] = dp[i-1][j-1]\n        else: dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])',
+   trig:'"two strings", "minimum operations to convert", "longest common", "is subsequence of", "wildcard/regex match"',
+   q:'What are dp[i][0] and dp[0][j] for edit distance and why?',
+   a:'i and j: turning a prefix into empty costs i deletions; building a prefix from empty costs j insertions.'},
+  {t:'LIS in n log n: patience piles', g:'dp', hook:'tails[k] = smallest possible tail of an increasing subsequence of length k+1. Keep it sorted.',
+   pain:'The O(n^2) LIS times out at 10^5. The trick is not obvious, and interviewers love asking "can you do better".',
+   trick:'For each x, find the first tail >= x (bisect_left). Replace it (a shorter or equal-length subsequence now ends smaller, which is better for the future). If none, append (longer subsequence). Length of tails is the LIS length. tails is NOT the actual subsequence.',
+   feel:'[10, 9, 2, 5, 3, 7, 101, 18]: tails 10 -> 9 -> 2 -> 2,5 -> 2,3 -> 2,3,7 -> 2,3,7,101 -> 2,3,7,18. Length 4.',
+   code:'tails = []\nfor x in nums:\n    i = bisect.bisect_left(tails, x)\n    if i == len(tails): tails.append(x)\n    else: tails[i] = x\nreturn len(tails)',
+   trig:'"longest increasing subsequence", "envelopes" (sort by w asc, h desc, LIS on h), "minimum removals to make sorted"',
+   q:'Non-decreasing instead of strictly increasing?',
+   a:'bisect_right. Equal values are then allowed to extend rather than replace.'},
+  {t:'State-machine DP: buy / sell / cooldown', g:'dp', hook:'Name the states you can be in after each day, and how you move between them.',
+   pain:'Stock problems with cooldown or fee: greedy fails, and a 2D table by day and transactions is confusing.',
+   trick:'States: hold (own a share), sold (sold today), rest (no share, did not sell today). Transitions per price p: hold = max(hold, rest - p); sold = hold + p; rest = max(rest, sold). Answer max(sold, rest). Every variant is the same picture with different edges.',
+   feel:'[1, 2, 3, 0, 2]: buy 1, sell 2, cooldown, buy 0, sell 2 -> 3.',
+   code:'hold, sold, rest = -INF, 0, 0\nfor p in prices:\n    hold, sold, rest = max(hold, rest - p), hold + p, max(rest, sold)\nreturn max(sold, rest)',
+   trig:'"buy and sell", "cooldown", "transaction fee", "at most k transactions", "hold / not hold"',
+   q:'With a fee and no cooldown, what are the states?',
+   a:'Just hold and free. free = max(free, hold + p - fee); hold = max(hold, free - p).'},
+  // ===== greedy =====
+  {t:'Greedy: only with an exchange argument', g:'greedy', hook:'"Swapping any optimal choice for my greedy choice never makes things worse." If you cannot say it, it is DP.',
+   pain:'Greedy that "feels right" fails on coin change with coins [1, 3, 4] and amount 6 (greedy 4+1+1, optimal 3+3).',
+   trick:'Jump game: track the farthest reachable index; if i > far you are stuck. Activity selection: pick earliest end. Partition labels: extend the segment to the last occurrence of every char inside it. Each has a one-sentence proof.',
+   feel:'Partition labels "ababcbacadefegdehijhklij": last[a] = 8 so the first segment must reach 8; inside it last[c] = 7, fine -> cut at 8.',
+   code:'far = 0\nfor i, x in enumerate(nums):\n    if i > far: return False\n    far = max(far, i + x)\nreturn True',
+   trig:'"minimum number of jumps/arrows/boats", "can reach", "schedule the most", "gas station", "assign cookies"',
+   q:'Gas station: why does resetting start = i + 1 when tank < 0 work?',
+   a:'If you cannot reach i+1 from start, you cannot reach it from any station between start and i either (they had even less fuel banked). And if total gas >= total cost, a solution exists.'},
+  // ===== strings =====
+  {t:'Palindromes: expand around the centre', g:'strings', hook:'A palindrome grows outward from its middle. There are only 2n - 1 middles.',
+   pain:'Checking every substring is O(n^3). The DP table is O(n^2) memory.',
+   trick:'For each centre (a char, or the gap between two chars), expand while s[l] == s[r]. Count or record the longest. O(n^2) time, O(1) space, and easy to get right.',
+   feel:'"babad": centre at index 1 (a) expands to "bab". Centre at 2 expands to "aba". Answer 3.',
+   code:'best = \'\'\nfor c in range(2 * len(s) - 1):\n    l, r = c // 2, (c + 1) // 2\n    while l >= 0 and r < len(s) and s[l] == s[r]: l -= 1; r += 1\n    if r - l - 1 > len(best): best = s[l+1:r]',
+   trig:'"longest palindromic substring", "count palindromic substrings", "palindrome partitioning" (backtracking with this check)',
+   q:'Longest palindromic SUBSEQUENCE instead of substring?',
+   a:'Different problem: LCS of s and reversed s, or interval DP. Substring is contiguous, subsequence is not.'},
+  {t:'KMP failure function: never re-scan text', g:'strings', hook:'When a mismatch happens, the pattern already knows how far it can shift itself.',
+   pain:'Naive substring search is O(nm). Python\'s "in" is fast but they may ask you to explain the linear algorithm.',
+   trick:'lps[i] = length of the longest proper prefix of p[:i+1] that is also its suffix. On mismatch at pattern index k, jump k = lps[k-1] instead of restarting; the text pointer never moves back. O(n + m).',
+   feel:'p = "aabaaab": lps = [0,1,0,1,2,2,3]. Matching "aabaaab" against text, a mismatch after "aabaa" falls back to lps[4] = 2, not 0.',
+   code:'lps = [0] * len(p); k = 0\nfor i in range(1, len(p)):\n    while k and p[i] != p[k]: k = lps[k - 1]\n    if p[i] == p[k]: k += 1\n    lps[i] = k',
+   trig:'"find pattern in text", "repeated substring pattern", "shortest palindrome" (lps of s + # + reverse)',
+   q:'Rabin-Karp: what does it trade compared to KMP?',
+   a:'Simplicity and multi-pattern search for a tiny chance of hash collision (verify on hit). Rolling hash updates in O(1) per shift.'},
+  // ===== bits =====
+  {t:'XOR: the self-cancelling operator', g:'bits', hook:'x ^ x = 0 and x ^ 0 = x, so pairs vanish and the odd one out survives.',
+   pain:'"Every number appears twice except one, O(1) space" cannot be done with a set.',
+   trick:'XOR everything. Pairs cancel. For two singles: XOR gives a ^ b; pick any set bit (x & -x); it differs between a and b; XOR the numbers in each group separately. Missing number: XOR 0..n with all elements.',
+   feel:'[4, 1, 2, 1, 2]: 4^1^2^1^2 = 4.',
+   code:'x = 0\nfor v in nums: x ^= v\n# two singles:\nlow = x & -x; a = 0\nfor v in nums:\n    if v & low: a ^= v\nreturn [a, x ^ a]',
+   trig:'"appears once", "missing number", "O(1) extra space with duplicates", "swap without temp"',
+   q:'n & (n - 1): what does it do and what is it for?',
+   a:'Clears the lowest set bit. Zero result means power of two; looping it counts set bits in O(popcount).'},
+  // ===== design =====
+  {t:'LRU cache: hashmap + doubly linked list', g:'design', hook:'O(1) lookup needs a map. O(1) "move to front" and "evict oldest" need a linked list. So use both.',
+   pain:'A list alone makes lookup O(n). A map alone has no order. A single-linked list cannot remove a node in O(1).',
+   trick:'Map key -> node. Nodes in a doubly linked list with sentinel head and tail; most recent near head. get: find node, unlink, add to front. put: update or insert at front; if over capacity, unlink tail.prev and delete it from the map. OrderedDict does this for you, but write the manual version once.',
+   feel:'cap 2: put(1), put(2), get(1) -> 1 moves to front. put(3) -> evicts 2 (tail). get(2) -> -1.',
+   code:'def _remove(n): n.prev.next, n.next.prev = n.next, n.prev\ndef _add_front(n):\n    n.next, n.prev = head.next, head\n    head.next.prev = n; head.next = n\n# get: node = map[key]; _remove(node); _add_front(node)\n# evict: lru = tail.prev; _remove(lru); del map[lru.key]',
+   trig:'"cache", "least recently used", "O(1) get and put", "evict", "TTL" (store expiry, check on get)',
+   q:'Why sentinels?',
+   a:'Head and tail dummies mean every real node has a prev and next. No None checks on insert or remove at the ends.'},
+  {t:'O(1) insert, delete, getRandom: swap-pop', g:'design', hook:'Deleting from the middle of a list is O(n). Deleting from the END is O(1). So move the victim to the end.',
+   pain:'A set gives O(1) insert/delete but no random access. A list gives random access but O(n) delete.',
+   trick:'List of values + map value -> index. Delete x: copy the last element into x\'s slot, update its index in the map, pop the last, delete x from the map. getRandom: random.choice(list).',
+   feel:'[a, b, c], delete a: last = c -> list [c, b], pos[c] = 0, pop -> [c, b].',
+   code:'def remove(self, x):\n    i, last = self.pos[x], self.arr[-1]\n    self.arr[i], self.pos[last] = last, i\n    self.arr.pop(); del self.pos[x]',
+   trig:'"O(1) for all operations", "random element", "insert delete getRandom"',
+   q:'With duplicates allowed?',
+   a:'pos maps value -> set of indices. On remove, pick any index of x, move the last element there, fix the last element\'s index set.'},
+  {t:'Rate limiter / hit counter: a window over time', g:'design', hook:'A sliding window where the "array" is time and the elements are timestamps.',
+   pain:'"Allow at most N requests per client per minute": storing all requests forever is unbounded memory; a fixed counter per minute allows 2N at the boundary.',
+   trick:'Per client, a deque of timestamps. On request: pop from the left everything older than now - window; if fewer than N remain, append and allow. Memory O(N) per client. For millions of clients use counters or token bucket; distributed: Redis.',
+   feel:'N = 3, window 60: requests at 0, 10, 20 allowed; at 30 denied; at 61 the 0 expires, allowed.',
+   code:'def allow(self, client, t):\n    q = self.log[client]\n    while q and q[0] <= t - self.window: q.popleft()\n    if len(q) < self.n: q.append(t); return True\n    return False',
+   trig:'"rate limit", "hits in last 5 minutes", "logger should print at most once per 10s", "requests in the last N seconds"',
+   q:'Hit counter at very high QPS: what changes?',
+   a:'Do not store every hit. Bucket by second: a ring buffer of 300 (timestamp, count) pairs. Memory O(300) regardless of traffic.'},
+  {t:'Time-based key-value: bisect on timestamps', g:'design', hook:'Each key holds a list sorted by time, because timestamps only increase. Sorted means binary search.',
+   pain:'get(key, t) = latest value with timestamp <= t. Scanning the list per get is O(n).',
+   trick:'set appends (t, v) to key\'s list (already sorted since t increases). get does bisect_right on t and takes the element before. O(log n).',
+   feel:'set(foo, bar, 1), set(foo, bar2, 4). get(foo, 3) -> bisect finds index 1 -> take index 0 -> bar. get(foo, 5) -> bar2.',
+   code:'def get(self, key, t):\n    arr = self.d.get(key, [])\n    i = bisect.bisect_right(arr, (t, chr(0x10FFFF)))\n    return arr[i-1][1] if i else \'\'',
+   trig:'"as of timestamp", "versioned", "snapshot", "latest value before"',
+   q:'Why the chr(0x10FFFF) in the search tuple?',
+   a:'Tuples compare element-wise. (t, huge_string) sorts after any (t, real_value), so bisect_right lands after all entries with timestamp exactly t.'},
+  // ===== closing =====
+  {t:'The interview script', g:'mindset', hook:'They score the talk as much as the code. Say the pattern, the invariant, the complexity, and test before they ask.',
+   pain:'Silent coding for 20 minutes then "done" leaves the interviewer nothing to grade except the bug they spotted at minute 4.',
+   trick:'1 restate + example. 2 constraints (read N). 3 brute force + why too slow. 4 pattern + invariant. 5 walk an example by hand. 6 code top-down with real names. 7 test: example, empty, single, all equal, negatives, max. 8 complexity, then offer the follow-up.',
+   feel:'"Contiguous with a constraint, so sliding window. Invariant: after the inner while, the window is valid. Both pointers only move right, so O(n). Edge cases: k = 0, empty string, all same char. Let me trace the example..."',
+   code:'# minute 0-3: restate, constraints, example\n# minute 3-6: brute force, pattern, invariant\n# minute 6-8: dry run on paper\n# minute 8-20: code\n# minute 20-25: test + complexity\n# minute 25+: follow-up',
+   trig:'Every problem, every time.',
+   q:'You are stuck at minute 10 with no idea. What do you say?',
+   a:'"Let me state the brute force and see what it recomputes." Then walk the trigger table out loud: contiguous? sorted? next greater? monotone feasibility? connectivity? overlapping subproblems? One of them fires.'}
+  ];
+
+  // ---------- render ----------
+  var feed = document.getElementById('feed');
+  var reels = document.getElementById('reels');
+  var order = R.map(function(_, i){ return i; });
+  var onlyUnlearned = false;
+  var streak = 0;
+  var mem = {};   // in-memory fallback when storage is blocked
+  function learned(i){ if (i in mem) return mem[i]; try { return localStorage.getItem(KEY + slug(R[i].t)) === '1'; } catch(e){ return false; } }
+  function setLearned(i, v){ mem[i] = v; try { if (v) localStorage.setItem(KEY + slug(R[i].t), '1'); else localStorage.removeItem(KEY + slug(R[i].t)); } catch(e){} }
+  function slug(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+  function toast(msg){ var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove('show'); }, 1100); }
+  function esc(s){ return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  function render(){
+    feed.innerHTML = '';
+    var list = order.filter(function(i){ return !onlyUnlearned || !learned(i); });
+    list.forEach(function(i, pos){
+      var r = R[i];
+      var d = document.createElement('div');
+      d.className = 'reel' + (learned(i) ? ' learned' : ''); d.dataset.idx = i;
+      d.innerHTML =
+        '<div class="inner">' +
+        '<div class="meta"><span>' + (pos + 1) + ' / ' + list.length + ' &middot; ' + r.g + '</span><span class="done">' + (learned(i) ? '&#10003; got it' : '') + '</span></div>' +
+        '<h3>' + r.t + '</h3>' +
+        '<p class="hook">' + r.hook + '</p>' +
+        '<div class="blk"><b class="lbl">The pain without it</b><p>' + r.pain + '</p></div>' +
+        '<div class="blk"><b class="lbl">The trick and the invariant</b><p>' + r.trick + '</p></div>' +
+        '<div class="blk"><b class="lbl">Feel it</b><p>' + r.feel + '</p></div>' +
+        '<pre></pre>' +
+        '<div class="blk trig"><b class="lbl">Trigger words</b>' + r.trig + '</div>' +
+        '<div class="blk quiz"><b class="lbl">Check yourself &middot; <span class="tap">tap to reveal</span></b><div>' + r.q + '</div><div class="ans">' + r.a + '</div></div>' +
+        '<div class="acts"><button class="again">Again &#8635;</button><button class="got">Got it &#10003;</button></div>' +
+        '</div>';
+      d.querySelector('pre').textContent = r.code;
+      d.querySelector('.quiz').addEventListener('click', function(){ this.classList.toggle('open'); });
+      d.querySelector('.got').addEventListener('click', function(){
+        setLearned(i, true); d.classList.add('learned'); d.querySelector('.done').innerHTML = '&#10003; got it';
+        streak += 1; updateBar(); toast(streak >= 3 ? 'Streak ' + streak + ' \uD83D\uDD25' : 'Locked in');
+        next(d);
+      });
+      d.querySelector('.again').addEventListener('click', function(){
+        setLearned(i, false); d.classList.remove('learned'); d.querySelector('.done').innerHTML = '';
+        streak = 0; updateBar(); toast('Queued for another pass'); next(d);
+      });
+      feed.appendChild(d);
+    });
+    var end = document.createElement('div'); end.className = 'reel';
+    end.innerHTML = '<div class="inner end"><h3>' + (list.length ? 'Deck finished.' : 'Nothing left unlearned.') + '</h3><p>' + (onlyUnlearned ? 'Switch off "Unlearned" to run the whole deck again, or shuffle and go once more. Blind re-solve in 7 days is what makes it stick.' : 'Tomorrow: press Unlearned and clear what is left. Then open the Asked list and re-derive three of them cold.') + '</p></div>';
+    feed.appendChild(end);
+    feed.scrollTop = 0; updateBar();
+  }
+  function next(d){ var n = d.nextElementSibling; if (n) setTimeout(function(){ n.scrollIntoView({behavior:'smooth', block:'start'}); }, 150); }
+  function updateBar(){
+    var done = R.filter(function(_, i){ return learned(i); }).length;
+    document.getElementById('reelProg').style.width = (100 * done / R.length) + '%';
+    document.getElementById('reelCount').textContent = done + '/' + R.length;
+    document.getElementById('reelStreak').innerHTML = '&#128293; ' + streak;
+  }
+  function open(){ reels.classList.add('on'); document.body.style.overflow = 'hidden'; render(); }
+  function close(){ reels.classList.remove('on'); document.body.style.overflow = ''; }
+
+  document.getElementById('lazyBtn').addEventListener('click', open);
+  document.getElementById('lazyNav').addEventListener('click', function(e){ e.preventDefault(); open(); });
+  document.getElementById('reelClose').addEventListener('click', close);
+  document.getElementById('reelUnlearned').addEventListener('click', function(){ onlyUnlearned = !onlyUnlearned; this.classList.toggle('active', onlyUnlearned); render(); });
+  document.getElementById('reelShuffle').addEventListener('click', function(){
+    for (var i = order.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)); var t = order[i]; order[i] = order[j]; order[j] = t; }
+    render(); toast('Shuffled');
+  });
+  document.addEventListener('keydown', function(e){
+    if (!reels.classList.contains('on')) return;
+    var cards = feed.querySelectorAll('.reel'); if (!cards.length) return;
+    var top = feed.scrollTop, cur = null;
+    cards.forEach(function(c){ if (c.offsetTop <= top + 5) cur = c; });
+    if (!cur) cur = cards[0];
+    if (e.key === 'ArrowDown' || e.key === 'j'){ e.preventDefault(); if (cur.nextElementSibling) cur.nextElementSibling.scrollIntoView({behavior:'smooth'}); }
+    else if (e.key === 'ArrowUp' || e.key === 'k'){ e.preventDefault(); if (cur.previousElementSibling) cur.previousElementSibling.scrollIntoView({behavior:'smooth'}); }
+    else if (e.key === ' '){ e.preventDefault(); var qz = cur.querySelector('.quiz'); if (qz) qz.classList.toggle('open'); }
+    else if (e.key === 'g'){ var b = cur.querySelector('.got'); if (b) b.click(); }
+    else if (e.key === 'a'){ var b2 = cur.querySelector('.again'); if (b2) b2.click(); }
+    else if (e.key === 'Escape'){ close(); }
+  });
+  if (location.hash === '#lazy') open();
+})();
+</script>

@@ -1,0 +1,681 @@
+
+<section id="ds">
+<h2>6. Data structure templates (implementation drill bank)</h2>
+<p class="small">Each of these should take under 5 minutes from a blank editor. Pick one per day at random for the implementation drill.</p>
+
+<details class="card"><summary>Linked list: node, reverse, fast/slow, merge, dummy head <span class="tag hot">very common</span></summary><div class="body">
+<pre>
+class ListNode:
+    def __init__(self, val=0, next=None):
+        self.val, self.next = val, next
+
+def reverse(head):
+    prev, cur = None, head
+    while cur:
+        cur.next, prev, cur = prev, cur, cur.next     # one-line rotate
+    return prev
+
+def reverse_between(head, left, right):           # reverse positions left..right (1-indexed)
+    dummy = ListNode(0, head); pre = dummy
+    for _ in range(left - 1): pre = pre.next
+    cur = pre.next
+    for _ in range(right - left):                 # head-insertion trick
+        nxt = cur.next
+        cur.next = nxt.next
+        nxt.next = pre.next
+        pre.next = nxt
+    return dummy.next
+
+def middle(head):                                 # second middle for even length
+    slow = fast = head
+    while fast and fast.next:
+        slow, fast = slow.next, fast.next.next
+    return slow
+
+def has_cycle(head):
+    slow = fast = head
+    while fast and fast.next:
+        slow, fast = slow.next, fast.next.next
+        if slow is fast: return True
+    return False
+
+def cycle_start(head):                            # Floyd: reset one pointer to head
+    slow = fast = head
+    while fast and fast.next:
+        slow, fast = slow.next, fast.next.next
+        if slow is fast:
+            slow = head
+            while slow is not fast: slow, fast = slow.next, fast.next
+            return slow
+    return None
+
+def kth_from_end(head, k):
+    lead = follow = head
+    for _ in range(k): lead = lead.next
+    while lead: lead, follow = lead.next, follow.next
+    return follow
+
+def merge_sorted(a, b):
+    dummy = tail = ListNode()
+    while a and b:
+        if a.val <= b.val: tail.next, a = a, a.next
+        else: tail.next, b = b, b.next
+        tail = tail.next
+    tail.next = a or b
+    return dummy.next
+
+def remove_nth_from_end(head, n):
+    dummy = ListNode(0, head); lead = follow = dummy
+    for _ in range(n + 1): lead = lead.next
+    while lead: lead, follow = lead.next, follow.next
+    follow.next = follow.next.next
+    return dummy.next
+
+def reorder(head):                                # L0 Ln L1 Ln-1 ...: middle, reverse 2nd half, weave
+    mid = middle(head); second = reverse(mid.next); mid.next = None
+    first = head
+    while second:
+        n1, n2 = first.next, second.next
+        first.next = second; second.next = n1
+        first, second = n1, n2
+
+def add_two_numbers(l1, l2):                      # digits stored reversed
+    dummy = tail = ListNode(); carry = 0
+    while l1 or l2 or carry:
+        s = carry + (l1.val if l1 else 0) + (l2.val if l2 else 0)
+        carry, d = divmod(s, 10)
+        tail.next = ListNode(d); tail = tail.next
+        l1 = l1.next if l1 else None; l2 = l2.next if l2 else None
+    return dummy.next
+
+# copy list with random pointer: dict old->new in two passes, or interleave-clone O(1) space
+</pre>
+<p class="small">Edge cases: empty list, single node, k = length, both lists empty, cycle at head. Always use a dummy head when the head can change.</p>
+</div></details>
+
+<details class="card"><summary>Stack, queue, min-stack, monotonic stack, monotonic deque <span class="tag hot">very common</span></summary><div class="body">
+<pre>
+# stack = list; queue = deque
+class MinStack:                                    # O(1) push/pop/top/getMin
+    def __init__(self): self.st = []; self.mn = []
+    def push(self, x):
+        self.st.append(x)
+        self.mn.append(x if not self.mn else min(x, self.mn[-1]))
+    def pop(self): self.mn.pop(); return self.st.pop()
+    def top(self): return self.st[-1]
+    def getMin(self): return self.mn[-1]
+
+class QueueViaStacks:                              # amortized O(1)
+    def __init__(self): self.inbox, self.outbox = [], []
+    def push(self, x): self.inbox.append(x)
+    def _shift(self):
+        if not self.outbox:
+            while self.inbox: self.outbox.append(self.inbox.pop())
+    def pop(self): self._shift(); return self.outbox.pop()
+    def peek(self): self._shift(); return self.outbox[-1]
+
+def next_greater(nums):                            # index of next strictly greater, -1 if none
+    n = len(nums); res = [-1] * n; st = []         # st holds indices, values decreasing
+    for i, x in enumerate(nums):
+        while st and nums[st[-1]] < x:
+            res[st.pop()] = i
+        st.append(i)
+    return res
+# previous smaller: iterate left->right, pop while nums[st[-1]] >= x, answer = st[-1] before push
+# circular array: loop i in range(2n), use i % n, only push when i < n
+
+def largest_rectangle(heights):                    # monotonic increasing stack
+    st, best = [], 0
+    for i, h in enumerate(heights + [0]):          # sentinel flushes the stack
+        start = i
+        while st and st[-1][1] >= h:
+            idx, hh = st.pop()
+            best = max(best, hh * (i - idx))
+            start = idx
+        st.append((start, h))
+    return best
+
+def sliding_window_max(nums, k):                   # monotonic deque of indices, values decreasing
+    dq, out = deque(), []
+    for i, x in enumerate(nums):
+        while dq and nums[dq[-1]] <= x: dq.pop()
+        dq.append(i)
+        if dq[0] <= i - k: dq.popleft()            # out of window
+        if i >= k - 1: out.append(nums[dq[0]])
+    return out
+
+def daily_temperatures(t):
+    res, st = [0] * len(t), []
+    for i, x in enumerate(t):
+        while st and t[st[-1]] < x:
+            j = st.pop(); res[j] = i - j
+        st.append(i)
+    return res
+
+def sum_subarray_mins(arr):                        # contribution technique, prev-smaller strict, next-smaller non-strict
+    n = len(arr); left = [0]*n; right = [0]*n; st = []
+    for i in range(n):
+        while st and arr[st[-1]] > arr[i]: st.pop()
+        left[i] = i - (st[-1] if st else -1); st.append(i)
+    st = []
+    for i in range(n-1, -1, -1):
+        while st and arr[st[-1]] >= arr[i]: st.pop()
+        right[i] = (st[-1] if st else n) - i; st.append(i)
+    return sum(a * l * r for a, l, r in zip(arr, left, right)) % MOD
+</pre>
+<p class="small">Invariant to say: "the stack holds candidates that could still be the answer for a future element, in monotonic order". When a new element violates the order, the popped elements have found their answer.</p>
+</div></details>
+
+<details class="card"><summary>Heap patterns: top K, K-way merge, two heaps median, K closest, lazy deletion <span class="tag hot">very common</span></summary><div class="body">
+<pre>
+def top_k_frequent(nums, k):
+    cnt = Counter(nums)
+    return [x for x, _ in heapq.nlargest(k, cnt.items(), key=lambda kv: kv[1])]
+    # O(n) alternative: bucket sort by frequency (buckets[freq] = [nums])
+
+def kth_largest(nums, k):                          # keep a min-heap of size k
+    h = []
+    for x in nums:
+        heapq.heappush(h, x)
+        if len(h) > k: heapq.heappop(h)
+    return h[0]
+
+class KthLargestStream:
+    def __init__(self, k, nums):
+        self.k, self.h = k, nums
+        heapq.heapify(self.h)
+        while len(self.h) > k: heapq.heappop(self.h)
+    def add(self, x):
+        heapq.heappush(self.h, x)
+        if len(self.h) > self.k: heapq.heappop(self.h)
+        return self.h[0]
+
+def merge_k_sorted_lists(lists):                   # K-way merge with (val, idx, node)
+    h = [(node.val, i, node) for i, node in enumerate(lists) if node]
+    heapq.heapify(h)
+    dummy = tail = ListNode()
+    while h:
+        val, i, node = heapq.heappop(h)
+        tail.next = node; tail = node
+        if node.next: heapq.heappush(h, (node.next.val, i, node.next))
+    return dummy.next
+
+class MedianFinder:                                # two heaps: low = max-heap (negated), high = min-heap
+    def __init__(self): self.low, self.high = [], []
+    def addNum(self, x):
+        heapq.heappush(self.low, -x)
+        heapq.heappush(self.high, -heapq.heappop(self.low))   # keep low.max <= high.min
+        if len(self.high) > len(self.low):
+            heapq.heappush(self.low, -heapq.heappop(self.high))
+    def findMedian(self):
+        if len(self.low) > len(self.high): return -self.low[0]
+        return (-self.low[0] + self.high[0]) / 2
+
+def k_closest(points, k):
+    return heapq.nsmallest(k, points, key=lambda p: p[0]*p[0] + p[1]*p[1])
+
+def reorganize_string(s):                          # greedy with max-heap, never place same char twice
+    h = [(-c, ch) for ch, c in Counter(s).items()]; heapq.heapify(h)
+    out, prev = [], None
+    while h:
+        c, ch = heapq.heappop(h)
+        out.append(ch)
+        if prev and prev[0] < 0: heapq.heappush(h, prev)
+        prev = (c + 1, ch)
+    return ''.join(out) if len(out) == len(s) else ''
+
+# lazy deletion: keep a "removed" counter dict; when peeking, pop while top is marked removed
+# scheduling with cooldown (Task Scheduler): max-heap of counts + queue of (ready_time, count)
+</pre>
+</div></details>
+
+<details class="card"><summary>Trie (prefix tree) with autocomplete and wildcard search</summary><div class="body">
+<pre>
+class TrieNode:
+    __slots__ = ('children', 'end', 'count')
+    def __init__(self):
+        self.children = {}; self.end = False; self.count = 0   # count = words through this node
+
+class Trie:
+    def __init__(self): self.root = TrieNode()
+    def insert(self, word):
+        node = self.root
+        for ch in word:
+            node = node.children.setdefault(ch, TrieNode())
+            node.count += 1
+        node.end = True
+    def search(self, word):
+        node = self._walk(word); return node is not None and node.end
+    def starts_with(self, prefix):
+        return self._walk(prefix) is not None
+    def _walk(self, s):
+        node = self.root
+        for ch in s:
+            node = node.children.get(ch)
+            if node is None: return None
+        return node
+    def words_with_prefix(self, prefix):           # autocomplete
+        node = self._walk(prefix); out = []
+        if not node: return out
+        def dfs(n, path):
+            if n.end: out.append(prefix + ''.join(path))
+            for ch in sorted(n.children):
+                path.append(ch); dfs(n.children[ch], path); path.pop()
+        dfs(node, []); return out
+    def search_wildcard(self, word):               # '.' matches any char
+        def dfs(node, i):
+            if i == len(word): return node.end
+            ch = word[i]
+            if ch == '.':
+                return any(dfs(c, i + 1) for c in node.children.values())
+            return ch in node.children and dfs(node.children[ch], i + 1)
+        return dfs(self.root, 0)
+
+# dict-of-dicts trie: root = {}; node = node.setdefault(ch, {}); node['$'] = True
+# Word Search II: build trie of words, DFS grid, prune node when its word count hits 0
+</pre>
+</div></details>
+
+<details class="card"><summary>Union-Find (DSU) with path compression + union by size <span class="tag hot">common</span></summary><div class="body">
+<pre>
+class DSU:
+    def __init__(self, n):
+        self.parent = list(range(n)); self.size = [1] * n; self.components = n
+    def find(self, x):
+        while self.parent[x] != x:
+            self.parent[x] = self.parent[self.parent[x]]     # path halving
+            x = self.parent[x]
+        return x
+    def union(self, a, b):
+        ra, rb = self.find(a), self.find(b)
+        if ra == rb: return False                          # already connected (cycle!)
+        if self.size[ra] < self.size[rb]: ra, rb = rb, ra
+        self.parent[rb] = ra; self.size[ra] += self.size[rb]
+        self.components -= 1
+        return True
+    def connected(self, a, b): return self.find(a) == self.find(b)
+
+# string keys: dict parent with setdefault, e.g. accounts merge, evaluate division (weighted DSU)
+# Redundant Connection: first edge whose union() returns False
+# Number of provinces / connected components: components after all unions
+# Kruskal MST: sort edges by weight, union if not connected
+</pre>
+<p class="small">Near O(1) amortized per op (inverse Ackermann). Say "alpha(n), effectively constant".</p>
+</div></details>
+
+<details class="card"><summary>LRU cache (OrderedDict and hand-rolled doubly linked list) <span class="tag hot">Salesforce classic</span></summary><div class="body">
+<pre>
+class LRUCache:                                    # interview-acceptable version
+    def __init__(self, capacity):
+        self.cap = capacity; self.od = OrderedDict()
+    def get(self, key):
+        if key not in self.od: return -1
+        self.od.move_to_end(key); return self.od[key]
+    def put(self, key, value):
+        if key in self.od: self.od.move_to_end(key)
+        self.od[key] = value
+        if len(self.od) > self.cap: self.od.popitem(last=False)
+
+class DNode:
+    __slots__ = ('key', 'val', 'prev', 'next')
+    def __init__(self, key=0, val=0):
+        self.key, self.val, self.prev, self.next = key, val, None, None
+
+class LRUCacheManual:                              # what they want if they say "no OrderedDict"
+    def __init__(self, capacity):
+        self.cap = capacity; self.map = {}
+        self.head, self.tail = DNode(), DNode()    # sentinels: head <-> ... <-> tail, MRU near head
+        self.head.next, self.tail.prev = self.tail, self.head
+    def _remove(self, node):
+        node.prev.next, node.next.prev = node.next, node.prev
+    def _add_front(self, node):
+        node.next, node.prev = self.head.next, self.head
+        self.head.next.prev = node; self.head.next = node
+    def get(self, key):
+        if key not in self.map: return -1
+        node = self.map[key]; self._remove(node); self._add_front(node)
+        return node.val
+    def put(self, key, value):
+        if key in self.map:
+            node = self.map[key]; node.val = value; self._remove(node); self._add_front(node); return
+        if len(self.map) == self.cap:
+            lru = self.tail.prev; self._remove(lru); del self.map[lru.key]
+        node = DNode(key, value); self.map[key] = node; self._add_front(node)
+
+# Follow-ups: TTL per key (store expiry, check on get, lazy purge), thread safety (a lock around get/put),
+# LFU (freq -> OrderedDict of keys, track min_freq), size-aware eviction, write-through to DB.
+</pre>
+</div></details>
+
+<details class="card"><summary>LFU cache</summary><div class="body">
+<pre>
+class LFUCache:
+    def __init__(self, capacity):
+        self.cap = capacity
+        self.kv = {}                               # key -> (val, freq)
+        self.buckets = defaultdict(OrderedDict)    # freq -> keys in LRU order
+        self.min_freq = 0
+    def _touch(self, key):
+        val, f = self.kv[key]
+        del self.buckets[f][key]
+        if not self.buckets[f]:
+            del self.buckets[f]
+            if self.min_freq == f: self.min_freq += 1
+        self.buckets[f + 1][key] = None
+        self.kv[key] = (val, f + 1)
+    def get(self, key):
+        if key not in self.kv: return -1
+        self._touch(key); return self.kv[key][0]
+    def put(self, key, value):
+        if self.cap == 0: return
+        if key in self.kv:
+            self.kv[key] = (value, self.kv[key][1]); self._touch(key); return
+        if len(self.kv) == self.cap:
+            old, _ = self.buckets[self.min_freq].popitem(last=False)
+            if not self.buckets[self.min_freq]: del self.buckets[self.min_freq]
+            del self.kv[old]
+        self.kv[key] = (value, 1); self.buckets[1][key] = None; self.min_freq = 1
+</pre>
+</div></details>
+
+<details class="card"><summary>O(1) insert / delete / getRandom (hashmap + array swap-pop)</summary><div class="body">
+<pre>
+class RandomizedSet:
+    def __init__(self): self.arr = []; self.pos = {}
+    def insert(self, x):
+        if x in self.pos: return False
+        self.pos[x] = len(self.arr); self.arr.append(x); return True
+    def remove(self, x):
+        if x not in self.pos: return False
+        i, last = self.pos[x], self.arr[-1]
+        self.arr[i], self.pos[last] = last, i        # move last into the hole
+        self.arr.pop(); del self.pos[x]; return True
+    def getRandom(self): return random.choice(self.arr)
+# with duplicates: pos maps value -> set of indices
+</pre>
+</div></details>
+
+<details class="card"><summary>Fenwick tree (BIT) and segment tree (range query + point update)</summary><div class="body">
+<pre>
+class Fenwick:                                     # 1-indexed prefix sums, O(log n) update/query
+    def __init__(self, n): self.n = n; self.t = [0] * (n + 1)
+    def add(self, i, delta):                       # i is 1-indexed
+        while i <= self.n: self.t[i] += delta; i += i & -i
+    def prefix(self, i):                           # sum of [1..i]
+        s = 0
+        while i > 0: s += self.t[i]; i -= i & -i
+        return s
+    def range_sum(self, l, r): return self.prefix(r) - self.prefix(l - 1)
+# count inversions / "count smaller after self": coordinate-compress, scan from right, query prefix(rank-1)
+
+class SegTree:                                     # iterative, min/max/sum by changing op
+    def __init__(self, arr, op=min, identity=float('inf')):
+        self.n = len(arr); self.op = op; self.id = identity
+        self.t = [identity] * (2 * self.n)
+        self.t[self.n:] = arr
+        for i in range(self.n - 1, 0, -1): self.t[i] = op(self.t[2*i], self.t[2*i+1])
+    def update(self, i, val):
+        i += self.n; self.t[i] = val
+        while i > 1:
+            i //= 2; self.t[i] = self.op(self.t[2*i], self.t[2*i+1])
+    def query(self, l, r):                         # [l, r) half-open, 0-indexed
+        res = self.id; l += self.n; r += self.n
+        while l < r:
+            if l & 1: res = self.op(res, self.t[l]); l += 1
+            if r & 1: r -= 1; res = self.op(res, self.t[r])
+            l //= 2; r //= 2
+        return res
+</pre>
+</div></details>
+
+<details class="card"><summary>Binary tree / BST basics (node, insert, search, delete, iterative traversals)</summary><div class="body">
+<pre>
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val, self.left, self.right = val, left, right
+
+def bst_insert(root, val):
+    if not root: return TreeNode(val)
+    if val < root.val: root.left = bst_insert(root.left, val)
+    else: root.right = bst_insert(root.right, val)
+    return root
+
+def bst_search(root, val):
+    while root and root.val != val:
+        root = root.left if val < root.val else root.right
+    return root
+
+def bst_delete(root, key):
+    if not root: return None
+    if key < root.val: root.left = bst_delete(root.left, key)
+    elif key > root.val: root.right = bst_delete(root.right, key)
+    else:
+        if not root.left: return root.right
+        if not root.right: return root.left
+        succ = root.right
+        while succ.left: succ = succ.left           # inorder successor
+        root.val = succ.val
+        root.right = bst_delete(root.right, succ.val)
+    return root
+
+def preorder_iter(root):
+    out, st = [], [root] if root else []
+    while st:
+        n = st.pop(); out.append(n.val)
+        if n.right: st.append(n.right)
+        if n.left: st.append(n.left)
+    return out
+
+def postorder_iter(root):                          # preorder (root,right,left) reversed
+    out, st = [], [root] if root else []
+    while st:
+        n = st.pop(); out.append(n.val)
+        if n.left: st.append(n.left)
+        if n.right: st.append(n.right)
+    return out[::-1]
+
+class BSTIterator:                                 # O(h) memory, amortized O(1) next
+    def __init__(self, root): self.st = []; self._push_left(root)
+    def _push_left(self, n):
+        while n: self.st.append(n); n = n.left
+    def next(self):
+        n = self.st.pop(); self._push_left(n.right); return n.val
+    def hasNext(self): return bool(self.st)
+</pre>
+</div></details>
+
+<details class="card"><summary>Graph representation: adjacency list, matrix, edge list, building from any input <span class="tag hot">know cold</span></summary><div class="body">
+<div class="tbl"><table>
+<tr><th>Representation</th><th>Space</th><th>Edge lookup u-v</th><th>Iterate neighbours of u</th><th>Use when</th></tr>
+<tr><td>Adjacency list <code>dict[node] -> list</code></td><td>O(V + E)</td><td>O(deg u)</td><td>O(deg u)</td><td>Default. Sparse graphs, BFS/DFS/topo/Dijkstra.</td></tr>
+<tr><td>Adjacency set <code>dict[node] -> set</code></td><td>O(V + E)</td><td>O(1)</td><td>O(deg u)</td><td>Need "is there an edge" fast, or deleting edges.</td></tr>
+<tr><td>Adjacency matrix <code>[[0]*V for _ in range(V)]</code></td><td>O(V^2)</td><td>O(1)</td><td>O(V)</td><td>Dense graphs, V &lt;= ~1000, Floyd-Warshall, bitmask DP.</td></tr>
+<tr><td>Edge list <code>[(u, v, w)]</code></td><td>O(E)</td><td>O(E)</td><td>O(E)</td><td>Kruskal (sort edges), Bellman-Ford (relax all edges).</td></tr>
+<tr><td>Implicit (grid, states, words)</td><td>O(1)</td><td>compute</td><td>generate on the fly</td><td>Grids, puzzle states, word ladders. Never materialize.</td></tr>
+</table></div>
+<pre>
+# 1. edge list -> adjacency list (nodes 0..n-1)
+g = [[] for _ in range(n)]                        # list of lists when nodes are 0..n-1 (faster than dict)
+for u, v in edges:
+    g[u].append(v)
+    g[v].append(u)                                # undirected: add both; directed: only the first line
+
+# 2. weighted
+g = [[] for _ in range(n)]
+for u, v, w in edges:
+    g[u].append((v, w)); g[v].append((u, w))
+
+# 3. arbitrary labels (strings, tuples): defaultdict
+g = defaultdict(list)
+for a, b in pairs: g[a].append(b); g[b].append(a)
+nodes = set(g) | {b for vs in g.values() for b in vs}   # nodes with no outgoing edges are not keys!
+
+# 4. prerequisites [a, b] meaning "b before a" (Course Schedule): edge b -> a, indegree[a] += 1
+g = defaultdict(list); indeg = [0] * n
+for a, b in prerequisites: g[b].append(a); indeg[a] += 1
+
+# 5. adjacency matrix
+adj = [[0] * n for _ in range(n)]
+for u, v, w in edges: adj[u][v] = w; adj[v][u] = w
+
+# 6. matrix -> list (e.g. isConnected / Number of Provinces)
+g = [[v for v in range(n) if adj[u][v] and v != u] for u in range(n)]
+
+# 7. tree given as parent array
+children = defaultdict(list)
+for child, par in enumerate(parent):
+    if par != -1: children[par].append(child)
+
+# 8. reverse graph (for "who depends on me", Kosaraju, reachability from targets)
+rg = [[] for _ in range(n)]
+for u in range(n):
+    for v in g[u]: rg[v].append(u)
+
+# 9. dedupe parallel edges / self loops when the problem allows
+g = [set() for _ in range(n)]
+for u, v in edges:
+    if u != v: g[u].add(v); g[v].add(u)
+
+# 10. visited choices
+seen = [False] * n                                # 0..n-1 nodes
+seen = set()                                      # labels, or (r, c) grid tuples
+# mark when you ENQUEUE in BFS (not when you pop) or nodes get pushed many times
+# in DFS recursion on 10^5 nodes: sys.setrecursionlimit or go iterative with an explicit stack
+
+# 11. degree facts to say out loud
+# undirected: sum of degrees = 2E; tree: E = V - 1 and connected; DAG: at least one node with indegree 0
+</pre>
+<p class="small">Interviewer's first question is always "how will you represent the graph?" Answer with the table row, then the code. Say V and E in complexities, never "n".</p>
+</div></details>
+
+<details class="card"><summary>Topological sort: Kahn's (BFS), DFS post-order, cycle detection, all variants <span class="tag hot">know cold</span></summary><div class="body">
+<p><b>Fires on:</b> prerequisites, dependencies, build order, "must come before", scheduling with constraints, alien dictionary, evaluating formulas with references. Only on a <b>DAG</b>; if the order comes out shorter than V there is a cycle, and that is usually the second question.</p>
+<pre>
+# ---- Kahn's algorithm (BFS on indegree), the one to write by default ----
+def topo_kahn(n, g):                              # g: adjacency list u -> [v], edge u before v
+    indeg = [0] * n
+    for u in range(n):
+        for v in g[u]: indeg[v] += 1
+    q = deque(u for u in range(n) if indeg[u] == 0)
+    order = []
+    while q:
+        u = q.popleft(); order.append(u)
+        for v in g[u]:
+            indeg[v] -= 1
+            if indeg[v] == 0: q.append(v)
+    return order if len(order) == n else []       # [] => cycle exists
+# Invariant to say: a node enters the queue only when every prerequisite has already been output.
+# Time O(V + E), space O(V). Course Schedule I: return len(order) == n. Course Schedule II: return order.
+
+# ---- DFS post-order version (reverse of finishing order) with cycle detection via colors ----
+def topo_dfs(n, g):
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color = [WHITE] * n; out = []
+    def dfs(u):
+        color[u] = GRAY
+        for v in g[u]:
+            if color[v] == GRAY: return False      # back edge => cycle
+            if color[v] == WHITE and not dfs(v): return False
+        color[u] = BLACK; out.append(u)           # post-order
+        return True
+    for u in range(n):
+        if color[u] == WHITE and not dfs(u): return []
+    return out[::-1]                              # reverse post-order is a topological order
+
+# ---- iterative DFS version (deep graphs, no recursion limit worries) ----
+def topo_dfs_iter(n, g):
+    color = [0] * n; out = []
+    for s in range(n):
+        if color[s]: continue
+        st = [(s, 0)]; color[s] = 1                # (node, next child index)
+        while st:
+            u, i = st[-1]
+            if i < len(g[u]):
+                st[-1] = (u, i + 1); v = g[u][i]
+                if color[v] == 1: return []       # cycle
+                if color[v] == 0: color[v] = 1; st.append((v, 0))
+            else:
+                color[u] = 2; out.append(u); st.pop()
+    return out[::-1]
+
+# ---- variants they ask ----
+# lexicographically smallest order: replace deque with a min-heap in Kahn's
+# is the order unique? (Sequence Reconstruction): at every step the queue must hold exactly one node
+# longest path in a DAG / parallel courses (min semesters): process in topo order, dist[v] = max(dist[v], dist[u] + 1)
+# minimum height trees: peel leaves layer by layer (Kahn's on degree == 1), last 1 or 2 nodes remain
+# alien dictionary: for adjacent words find first differing char -> edge; if w2 is a proper prefix of w1 -> invalid
+# safe states (Find Eventual Safe States): Kahn's on the reversed graph, nodes that get outdegree 0 are safe
+# tasks with priorities and dependencies: Kahn's with a heap keyed on priority
+# detecting the cycle members: nodes never output (indeg still > 0 at the end) are on or downstream of a cycle
+</pre>
+<h4>The two-minute explanation you should be able to give</h4>
+<ol>
+<li>Compute indegree of every node: how many things must come before it.</li>
+<li>Everything with indegree 0 has no prerequisites, so it can go first: put it in the queue.</li>
+<li>Pop a node, output it, and "remove" it: decrement indegree of every neighbour. Any neighbour that hits 0 is now free: enqueue.</li>
+<li>If you output all V nodes, that is a valid order. If not, the leftovers all sit on a cycle, because each is waiting on another leftover.</li>
+<li>O(V + E): every node enqueued once, every edge relaxed once.</li>
+</ol>
+<p class="small">Undirected graphs have no topological order. If they give you an undirected "dependency" problem, it is Union-Find or tree traversal, not topo sort.</p>
+</div></details>
+
+<details class="card"><summary>Design-style classes Salesforce likes: hit counter, rate limiter, time-based KV, moving average, logger</summary><div class="body">
+<pre>
+class HitCounter:                                  # hits in last 300 seconds
+    def __init__(self): self.q = deque(); self.total = 0     # (timestamp, count)
+    def hit(self, t):
+        if self.q and self.q[-1][0] == t: self.q[-1][1] += 1
+        else: self.q.append([t, 1])
+        self.total += 1
+    def getHits(self, t):
+        while self.q and self.q[0][0] <= t - 300:
+            self.total -= self.q.popleft()[1]
+        return self.total
+
+class LoggerRateLimiter:                           # print message at most once per 10s
+    def __init__(self): self.next_ok = {}
+    def shouldPrint(self, t, msg):
+        if t >= self.next_ok.get(msg, 0):
+            self.next_ok[msg] = t + 10; return True
+        return False
+
+class SlidingWindowRateLimiter:                    # per client: at most N requests in window W
+    def __init__(self, n, window): self.n, self.w = n, window; self.log = defaultdict(deque)
+    def allow(self, client, t):
+        q = self.log[client]
+        while q and q[0] <= t - self.w: q.popleft()
+        if len(q) < self.n: q.append(t); return True
+        return False
+
+class TokenBucket:                                 # capacity tokens, refill rate r/sec
+    def __init__(self, capacity, rate): self.cap, self.rate = capacity, rate; self.tokens = capacity; self.last = time.time()
+    def allow(self, cost=1):
+        now = time.time(); self.tokens = min(self.cap, self.tokens + (now - self.last) * self.rate); self.last = now
+        if self.tokens >= cost: self.tokens -= cost; return True
+        return False
+
+class TimeMap:                                     # set(key, val, t), get(key, t) -> latest val with ts <= t
+    def __init__(self): self.d = defaultdict(list)         # key -> [(t, val)] with increasing t
+    def set(self, key, val, t): self.d[key].append((t, val))
+    def get(self, key, t):
+        arr = self.d.get(key, [])
+        i = bisect.bisect_right(arr, (t, chr(0x10FFFF)))    # last entry with ts <= t
+        return arr[i-1][1] if i else ''
+
+class MovingAverage:
+    def __init__(self, size): self.q = deque(maxlen=size); self.sum = 0; self.size = size
+    def next(self, val):
+        if len(self.q) == self.size: self.sum -= self.q[0]
+        self.q.append(val); self.sum += val
+        return self.sum / len(self.q)
+
+class UndergroundSystem:                           # check-in / check-out / average time
+    def __init__(self): self.inn = {}; self.tot = defaultdict(lambda: [0, 0])
+    def checkIn(self, uid, st, t): self.inn[uid] = (st, t)
+    def checkOut(self, uid, en, t):
+        st, t0 = self.inn.pop(uid); rec = self.tot[(st, en)]; rec[0] += t - t0; rec[1] += 1
+    def getAverageTime(self, st, en): s, c = self.tot[(st, en)]; return s / c
+</pre>
+<p class="small">Follow-ups: what if timestamps are not monotonic (sort or use a heap); memory bound (evict old buckets); distributed (Redis sorted set with ZADD/ZREMRANGEBYSCORE, or token bucket in Redis with Lua for atomicity); thread-safe (lock per client key).</p>
+</div></details>
+</section>

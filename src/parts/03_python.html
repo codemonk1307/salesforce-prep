@@ -1,0 +1,285 @@
+
+<section id="python">
+<h2>5. Python shortcuts (reflex level, zero syntax hesitation)</h2>
+
+<details class="card" open><summary>The import block you type first, every time</summary><div class="body">
+<pre>
+from collections import Counter, defaultdict, deque, OrderedDict
+from functools import lru_cache, cache, cmp_to_key, reduce
+from itertools import accumulate, permutations, combinations, product, groupby, chain, pairwise
+import heapq, bisect, math, sys, random, string
+from typing import List, Optional, Dict, Set, Tuple
+
+sys.setrecursionlimit(1 << 25)        # deep DFS / memoized recursion on trees & graphs
+INF = float('inf')
+MOD = 10**9 + 7
+</pre>
+<p class="small">HackerRank input: <code>data = sys.stdin.read().split()</code> then index through it, or <code>input()</code> per line. For heavy output, collect into a list and <code>print('\n'.join(out))</code> once.</p>
+</div></details>
+
+<details class="card" open><summary>Lists, slicing, sorting</summary><div class="body">
+<pre>
+arr = [0] * n                          # fixed-size list
+grid = [[0] * cols for _ in range(rows)]   # NOT [[0]*cols]*rows (shared rows bug)
+arr[::-1]; arr[i:j]; arr[::2]; arr[-k:]    # reverse, slice, stride, last k
+arr[~i]                                # element i from the end (~i == -i-1)
+a, b = b, a                            # swap
+arr.append(x); arr.pop(); arr.pop(0)   # O(1), O(1), O(n) -> use deque for pop(0)
+arr.insert(i, x)                       # O(n)
+arr.index(x); arr.count(x)             # O(n)
+del arr[i]; arr.remove(x)              # O(n)
+arr.extend(other); arr += other
+arr.sort()                             # in place, stable, Timsort O(n log n)
+sorted(arr, reverse=True)              # new list
+arr.sort(key=lambda x: (x[0], -x[1]))  # asc by first, desc by second
+arr.sort(key=lambda s: (len(s), s))    # by length then lexicographic
+sorted(d.items(), key=lambda kv: (-kv[1], kv[0]))   # freq desc, key asc
+arr.sort(key=cmp_to_key(lambda a, b: -1 if a+b > b+a else 1))   # Largest Number
+max(arr, key=len); min(range(n), key=lambda i: arr[i])           # argmax/argmin
+sum(arr); max(arr, default=0)          # default avoids ValueError on empty
+list(reversed(arr)); enumerate(arr, start=1)
+for a, b in zip(arr, arr[1:]): ...     # consecutive pairs (or pairwise(arr))
+for i in range(n - 1, -1, -1): ...     # reverse index loop
+list(accumulate(arr))                  # prefix sums (no leading 0)
+pre = [0] + list(accumulate(arr))      # prefix with leading 0: sum(l..r) = pre[r+1]-pre[l]
+list(accumulate(arr, max))             # running max
+any(x > 0 for x in arr); all(...)
+[*range(5)]; [*a, *b]                  # unpack
+flat = [x for row in grid for x in row]
+list(zip(*grid))                       # transpose (tuples)
+[list(r) for r in zip(*grid[::-1])]    # rotate 90 clockwise
+random.shuffle(arr); random.randint(a, b); random.choice(arr)
+</pre>
+</div></details>
+
+<details class="card" open><summary>Strings</summary><div class="body">
+<pre>
+s = "Hello, World"
+s.lower(); s.upper(); s.strip(); s.split(); s.split(',', maxsplit=1)
+''.join(parts); ' '.join(map(str, nums))
+s[::-1]; s[i:j]; s.find(t)  # -1 if absent; s.index(t) raises
+s.startswith('He'); s.endswith('d'); s.replace('l', 'L', 1)
+s.isalnum(); s.isalpha(); s.isdigit(); s.isspace(); c.islower()
+ord('a'), chr(97)             # 97, 'a'
+ord(c) - ord('a')             # index 0..25
+string.ascii_lowercase; string.digits
+s.count('l'); s.rjust(5, '0'); s.zfill(5); f"{x:05d}"; f"{val:.2f}"
+''.join(sorted(s))            # canonical anagram key (or tuple of 26 counts)
+tuple(sorted(Counter(s).items()))
+list(s)                       # mutable; build with list + ''.join, never s += c in a loop
+s.isnumeric(); int('42'); str(42); int('1011', 2); bin(10)[2:]; hex(255); oct(8)
+'{:b}'.format(10)             # '1010'
+s.title(); s.capitalize(); s.swapcase()
+words = s.split()             # collapses multiple spaces
+for i, ch in enumerate(s): ...
+s == s[::-1]                  # palindrome check
+import re; re.findall(r'\d+', s); re.split(r'[,;]\s*', s); re.sub(r'\s+', ' ', s)
+</pre>
+</div></details>
+
+<details class="card" open><summary>Dict, set, Counter, defaultdict, OrderedDict</summary><div class="body">
+<pre>
+d = {}; d.get(k, 0); d.setdefault(k, []).append(v)
+d[k] = d.get(k, 0) + 1
+for k, v in d.items(): ...
+k in d                               # O(1) average
+d.pop(k, None); del d[k]
+max(d, key=d.get)                    # key with max value
+sorted(d)                            # keys sorted
+d.keys(); d.values(); list(d.items())
+{k: v for k, v in zip(keys, vals)}   # dict comprehension
+dict(zip(keys, vals))
+next(iter(d))                        # first key (insertion order, 3.7+)
+
+dd = defaultdict(int)                # or list, set, lambda: [0, 0]
+dd[k] += 1                           # no KeyError
+graph = defaultdict(list); graph[u].append(v)
+
+c = Counter(s)                       # Counter('aab') -> {'a':2, 'b':1}
+c.most_common(k)                     # [(elem, count), ...] sorted desc
+c['z']                               # 0, no KeyError, does not insert
+c.update(other); c.subtract(other)
+c1 + c2; c1 - c2; c1 & c2; c1 | c2   # add, subtract(keep>0), min, max
+sum(c.values()); c.total()           # 3.10+
+list(c.elements())                   # expand back
+Counter(a) == Counter(b)             # anagram check
+
+s = set(); s.add(x); s.discard(x)   # discard never raises, remove raises
+s |= other; s &= other; s -= other; s ^ other
+a <= b                               # subset
+frozenset(iterable)                  # hashable set (dict key)
+tuple(arr)                           # hashable list (dict key, @cache args)
+
+od = OrderedDict()
+od.move_to_end(k)                    # to right end; last=False to left
+od.popitem(last=False)               # pop oldest (LRU eviction)
+</pre>
+</div></details>
+
+<details class="card" open><summary>heapq, bisect, deque</summary><div class="body">
+<pre>
+# heapq: min-heap on a plain list
+h = []
+heapq.heappush(h, (dist, node))       # tuples compare lexicographically
+d, u = heapq.heappop(h)
+h[0]                                  # peek min
+heapq.heapify(arr)                    # O(n), in place
+heapq.heappush(h, -x)                 # max-heap by negation; read -h[0]
+heapq.heappushpop(h, x)               # push then pop, faster than separate
+heapq.heapreplace(h, x)               # pop then push
+heapq.nlargest(k, arr, key=...)       # O(n log k)
+heapq.nsmallest(k, arr)
+heapq.merge(*sorted_lists)            # lazy K-way merge iterator
+# tie-break trick: push (priority, counter, obj) so obj never gets compared
+# custom object: define __lt__ on the class
+
+# bisect: binary search on sorted list
+bisect.bisect_left(arr, x)            # first index i with arr[i] >= x  (lower_bound)
+bisect.bisect_right(arr, x)           # first index i with arr[i] > x   (upper_bound)
+bisect.insort(arr, x)                 # insert keeping sorted, O(n) shift
+bisect.bisect_left(arr, x, lo, hi)    # range
+bisect.bisect_left(arr, key_value, key=lambda t: t[0])   # 3.10+ key
+# count of x in sorted arr = bisect_right - bisect_left
+# does x exist: i = bisect_left(arr, x); i < len(arr) and arr[i] == x
+# floor(x) = arr[bisect_right(arr, x) - 1] if that index >= 0
+
+# deque: O(1) both ends
+dq = deque([1, 2, 3], maxlen=k)       # maxlen auto-drops from left when full
+dq.append(x); dq.appendleft(x); dq.pop(); dq.popleft()
+dq[0]; dq[-1]; dq.rotate(1)           # peek both ends, rotate right
+</pre>
+</div></details>
+
+<details class="card" open><summary>functools, itertools, math, bits</summary><div class="body">
+<pre>
+@cache                                # memoize; args must be hashable (tuples not lists)
+def f(i, j): ...
+f.cache_clear()                       # between test cases
+@lru_cache(maxsize=None)              # same thing, older name
+
+permutations(arr, r); combinations(arr, r); combinations_with_replacement(arr, r)
+product(range(2), repeat=n)           # all bitstrings; product(a, b) cartesian
+for key, grp in groupby(sorted(arr), key=...): list(grp)   # consecutive runs
+# groupby('aaabbc') yields ('a', 'aaa'), ('b', 'bb'), ('c', 'c')  -> run-length encode
+chain(a, b); chain.from_iterable(list_of_lists)
+reduce(lambda a, b: a ^ b, arr, 0)    # xor fold
+
+math.gcd(a, b); math.lcm(a, b); math.isqrt(n); math.comb(n, k); math.perm(n, k)
+math.factorial(n); math.log2(x); math.ceil(a / b); -(-a // b)   # ceil div (int-safe)
+pow(a, b, MOD)                        # fast modular power O(log b)
+pow(a, -1, MOD)                       # modular inverse (3.8+)
+divmod(17, 5)                         # (3, 2)
+abs(x); round(2.5) == 2               # banker's rounding, beware
+-7 // 2 == -4; -7 % 2 == 1            # floor division & modulo follow floor
+int(-7 / 2) == -3                     # truncation toward zero if needed
+float('inf'); -float('inf'); math.inf
+# 10**18 fits fine: Python ints are arbitrary precision, no overflow
+
+x & 1                                 # odd?
+x >> 1; x << 1                        # halve, double
+x & (x - 1)                           # clear lowest set bit; == 0 means power of two
+x & -x                                # isolate lowest set bit
+bin(x).count('1'); x.bit_count()      # popcount (3.10+)
+x.bit_length()                        # floor(log2 x) + 1
+x ^ x == 0; x ^ 0 == x                # xor identities: single-number tricks
+mask | (1 << i); mask & ~(1 << i); (mask >> i) & 1   # set / clear / test bit i
+sub = mask                            # iterate all non-empty submasks of mask
+while sub:
+    ...; sub = (sub - 1) & mask
+</pre>
+</div></details>
+
+<details class="card" open><summary>Classes, recursion, closures, misc idioms</summary><div class="body">
+<pre>
+class Node:
+    __slots__ = ('val', 'next')       # faster, less memory
+    def __init__(self, val=0, next=None):
+        self.val, self.next = val, next
+
+from dataclasses import dataclass, field
+@dataclass(order=True)                # auto __init__, __repr__, __eq__, comparisons
+class Item:
+    priority: int
+    name: str = field(compare=False)
+
+class Wrapper:
+    def __lt__(self, other): return self.key < other.key   # makes it heap-able
+
+def outer():
+    best = 0
+    def dfs(node):
+        nonlocal best                 # needed to assign an enclosing int
+        ...
+    return best
+# alternative: self.best on the class, or best = [0] list cell
+
+# recursion -> explicit stack
+stack = [(root, 0)]
+while stack:
+    node, state = stack.pop()
+
+# iterative inorder
+stack, cur = [], root
+while stack or cur:
+    while cur: stack.append(cur); cur = cur.left
+    cur = stack.pop(); visit(cur); cur = cur.right
+
+# generator for lazy iteration
+def gen(node):
+    if node: yield from gen(node.left); yield node.val; yield from gen(node.right)
+
+# walrus
+while (line := next(it, None)) is not None: ...
+# conditional expression
+x = a if cond else b
+# multiple assignment from function
+lo, hi = 0, len(arr) - 1
+# sentinel / dummy
+dummy = ListNode(0, head); tail = dummy
+# ternary key for grid directions
+DIRS = ((1,0), (-1,0), (0,1), (0,-1)); DIRS8 = [(dr, dc) for dr in (-1,0,1) for dc in (-1,0,1) if dr or dc]
+inb = lambda r, c: 0 <= r < R and 0 <= c < C
+# time
+import time; time.time()              # seconds float
+</pre>
+</div></details>
+
+<details class="card" open><summary>Complexity of built-ins (say these when asked)</summary><div class="body">
+<div class="tbl"><table>
+<tr><th>Operation</th><th>Complexity</th><th>Notes</th></tr>
+<tr><td>list append / pop() / index access</td><td>O(1)</td><td>amortized append</td></tr>
+<tr><td>list insert / pop(0) / remove / in</td><td>O(n)</td><td>use deque for front ops</td></tr>
+<tr><td>list slice a[i:j]</td><td>O(j-i)</td><td>copies</td></tr>
+<tr><td>sort / sorted</td><td>O(n log n)</td><td>Timsort, stable, O(n) if nearly sorted</td></tr>
+<tr><td>dict/set get, set, in, del</td><td>O(1) avg</td><td>O(n) worst (hash collisions), keys must be hashable</td></tr>
+<tr><td>Counter(iterable)</td><td>O(n)</td><td>most_common(k) is O(n log k)</td></tr>
+<tr><td>heappush / heappop</td><td>O(log n)</td><td>heapify O(n); h[0] peek O(1)</td></tr>
+<tr><td>bisect_left / right</td><td>O(log n)</td><td>insort is O(n) due to shift</td></tr>
+<tr><td>deque append/pop both ends</td><td>O(1)</td><td>indexing middle O(n)</td></tr>
+<tr><td>string concat s += c in loop</td><td>O(n^2)</td><td>use list + ''.join</td></tr>
+<tr><td>string in / find</td><td>O(n*m) worst</td><td>practically fast</td></tr>
+<tr><td>min/max/sum over n</td><td>O(n)</td><td></td></tr>
+<tr><td>x in set vs x in list</td><td>O(1) vs O(n)</td><td>convert to set once</td></tr>
+</table></div>
+</div></details>
+
+<details class="card" open><summary>Python pitfalls that cost interviews</summary><div class="body">
+<ul>
+<li><code>[[0]*m]*n</code> creates n references to the same row. Use a comprehension.</li>
+<li>Mutable default args: <code>def f(x, memo={})</code> is shared across calls. Use <code>None</code> and create inside.</li>
+<li>Recursion depth: default 1000. A 10^5-node linked list or skewed tree recursion crashes. Set the limit or go iterative.</li>
+<li><code>@cache</code> on a method holds <code>self</code> in the cache key; fine in interviews, but list args must become tuples.</li>
+<li>Integer division on negatives floors: <code>-1 // 2 == -1</code>. Use <code>int(a / b)</code> to truncate toward zero if the problem says so.</li>
+<li>Modifying a list while iterating over it skips elements. Iterate over a copy or build a new list.</li>
+<li><code>heapq</code> compares whole tuples: if two priorities tie and the payload is not comparable (dict, custom object) you get a TypeError. Add a counter as the second element.</li>
+<li><code>dict.keys()</code> view changes size during iteration -> RuntimeError. Snapshot with <code>list(d)</code>.</li>
+<li><code>is</code> vs <code>==</code>: use <code>is None</code>, <code>==</code> for values.</li>
+<li>Strings are immutable: build a list of chars, join at the end.</li>
+<li><code>sorted</code> returns a new list; <code>.sort()</code> returns None. <code>x = arr.sort()</code> is a classic slip.</li>
+<li><code>range</code> excludes the stop. <code>range(n-1, -1, -1)</code> for reverse to 0.</li>
+<li>Deep copy: <code>copy.deepcopy</code> for nested; <code>arr[:]</code> or <code>list(arr)</code> is shallow.</li>
+<li>Float precision: compare with tolerance, or work in integers (multiply out).</li>
+<li>Closures capture variables, not values: lambdas in a loop all see the final <code>i</code>. Use default arg <code>lambda i=i:</code>.</li>
+</ul>
+</div></details>
+</section>

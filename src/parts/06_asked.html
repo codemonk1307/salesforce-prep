@@ -1,0 +1,322 @@
+
+<section id="asked">
+<h2>9. Previously asked at Salesforce, grouped by pattern</h2>
+<div class="card static">
+<p>Compiled from public sources: the LeetCode "Salesforce" company tag, Glassdoor / LeetCode Discuss / Blind interview reports (2022 to 2026), and the classic "design a small class" problems that keep showing up in their practical rounds. Names are LeetCode titles so you can search them. <b>E / M / H</b> is LeetCode difficulty. Tick a box when you can re-derive it cold; progress is saved in this browser.</p>
+<p class="small">Do the ones tagged <span class="tag hot">hot</span> first. They are the repeat offenders across many reports.</p>
+</div>
+
+<details class="card" open><summary>Hashing and frequency maps <span class="tag hot">hot</span></summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>Two Sum</b> <span class="lvl e">E</span><br><span class="hint">complement in dict, one pass. Follow-up: sorted input (two pointers), return all pairs, stream.</span></span></li>
+<li><input type="checkbox"><span><b>Group Anagrams</b> <span class="lvl">M</span><br><span class="hint">key = sorted string or 26-count tuple.</span></span></li>
+<li><input type="checkbox"><span><b>Valid Anagram / Find All Anagrams in a String</b> <span class="lvl e">E</span><br><span class="hint">Counter equality; fixed window counts.</span></span></li>
+<li><input type="checkbox"><span><b>Top K Frequent Elements / Words</b> <span class="lvl">M</span><br><span class="hint">Counter + heap of size k, or bucket sort by frequency. Words: tie-break lexicographically with (-count, word).</span></span></li>
+<li><input type="checkbox"><span><b>Longest Consecutive Sequence</b> <span class="lvl">M</span><br><span class="hint">set; only expand from x when x-1 not in set.</span></span></li>
+<li><input type="checkbox"><span><b>Subarray Sum Equals K</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">prefix sum + count map. Negatives present, so no sliding window.</span></span></li>
+<li><input type="checkbox"><span><b>Contiguous Array / Continuous Subarray Sum</b> <span class="lvl">M</span><br><span class="hint">map 0 to -1; first index of prefix (or remainder).</span></span></li>
+<li><input type="checkbox"><span><b>Insert Delete GetRandom O(1)</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">dict of index + list swap-pop.</span></span></li>
+<li><input type="checkbox"><span><b>Design HashMap / HashSet</b> <span class="lvl e">E</span><br><span class="hint">buckets of lists (chaining), talk about load factor and resize.</span></span></li>
+<li><input type="checkbox"><span><b>First Unique Character / First Unique Number in a stream</b> <span class="lvl e">E</span><br><span class="hint">count map + queue (or OrderedDict) of candidates.</span></span></li>
+<li><input type="checkbox"><span><b>Isomorphic Strings / Word Pattern</b> <span class="lvl e">E</span><br><span class="hint">bijection: two maps or set(zip) sizes.</span></span></li>
+<li><input type="checkbox"><span><b>Sort Characters By Frequency</b> <span class="lvl">M</span><br><span class="hint">Counter + sort by (-count) or buckets.</span></span></li>
+<li><input type="checkbox"><span><b>Encode and Decode Strings</b> <span class="lvl">M</span><br><span class="hint">length-prefix framing.</span></span></li>
+<li><input type="checkbox"><span><b>Logger Rate Limiter</b> <span class="lvl e">E</span> <span class="tag hot">hot</span><br><span class="hint">message -> next allowed timestamp. Follow-up: memory cleanup, sliding window per message.</span></span></li>
+<li><input type="checkbox"><span><b>Design Underground System</b> <span class="lvl">M</span><br><span class="hint">two dicts: in-progress by user, totals by (start, end).</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Sliding window and prefix sums <span class="tag hot">hot</span></summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>Longest Substring Without Repeating Characters</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">last-seen index map, jump l.</span></span></li>
+<li><input type="checkbox"><span><b>Minimum Window Substring</b> <span class="lvl h">H</span> <span class="tag hot">hot</span><br><span class="hint">need counts + missing counter; shrink while missing == 0.</span></span></li>
+<li><input type="checkbox"><span><b>Longest Repeating Character Replacement</b> <span class="lvl">M</span><br><span class="hint">window valid if len - maxfreq &lt;= k.</span></span></li>
+<li><input type="checkbox"><span><b>Longest Substring with At Most K Distinct Characters</b> <span class="lvl">M</span><br><span class="hint">count map, shrink when len(map) &gt; k. Fruit Into Baskets is k = 2.</span></span></li>
+<li><input type="checkbox"><span><b>Permutation in String</b> <span class="lvl">M</span><br><span class="hint">fixed window count compare.</span></span></li>
+<li><input type="checkbox"><span><b>Max Consecutive Ones III</b> <span class="lvl">M</span><br><span class="hint">window with at most k zeros.</span></span></li>
+<li><input type="checkbox"><span><b>Minimum Size Subarray Sum</b> <span class="lvl">M</span><br><span class="hint">positives only, shrink while sum &gt;= target. With negatives: prefix + monotonic deque.</span></span></li>
+<li><input type="checkbox"><span><b>Maximum Points You Can Obtain from Cards</b> <span class="lvl">M</span><br><span class="hint">complement: minimum window of size n - k.</span></span></li>
+<li><input type="checkbox"><span><b>Subarrays with K Different Integers / Count Number of Nice Subarrays</b> <span class="lvl h">H</span><br><span class="hint">atMost(k) - atMost(k-1).</span></span></li>
+<li><input type="checkbox"><span><b>Product of Array Except Self</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">prefix and suffix products, no division. Follow-up: with zeros, with division allowed.</span></span></li>
+<li><input type="checkbox"><span><b>Maximum Subarray / Maximum Product Subarray</b> <span class="lvl">M</span><br><span class="hint">Kadane; product keeps max and min.</span></span></li>
+<li><input type="checkbox"><span><b>Range Sum Query Immutable / 2D</b> <span class="lvl e">E</span><br><span class="hint">prefix; 2D inclusion-exclusion. Mutable version: Fenwick.</span></span></li>
+<li><input type="checkbox"><span><b>Car Pooling / Corporate Flight Bookings</b> <span class="lvl">M</span><br><span class="hint">difference array.</span></span></li>
+<li><input type="checkbox"><span><b>Moving Average from Data Stream</b> <span class="lvl e">E</span><br><span class="hint">deque(maxlen) + running sum.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Two pointers and in-place arrays</summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>3Sum / 3Sum Closest / 4Sum</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">sort, anchor, two pointers, skip dupes.</span></span></li>
+<li><input type="checkbox"><span><b>Container With Most Water</b> <span class="lvl">M</span><br><span class="hint">move the shorter side.</span></span></li>
+<li><input type="checkbox"><span><b>Trapping Rain Water</b> <span class="lvl h">H</span> <span class="tag hot">hot</span><br><span class="hint">two pointers with lmax/rmax; or monotonic stack.</span></span></li>
+<li><input type="checkbox"><span><b>Move Zeroes / Remove Duplicates from Sorted Array / Remove Element</b> <span class="lvl e">E</span><br><span class="hint">read/write pointer.</span></span></li>
+<li><input type="checkbox"><span><b>Sort Colors</b> <span class="lvl">M</span><br><span class="hint">Dutch flag.</span></span></li>
+<li><input type="checkbox"><span><b>Merge Sorted Array</b> <span class="lvl e">E</span><br><span class="hint">fill from the back.</span></span></li>
+<li><input type="checkbox"><span><b>Valid Palindrome I / II</b> <span class="lvl e">E</span><br><span class="hint">skip non-alnum; one deletion = branch once.</span></span></li>
+<li><input type="checkbox"><span><b>Squares of a Sorted Array</b> <span class="lvl e">E</span><br><span class="hint">two pointers from ends, fill from back.</span></span></li>
+<li><input type="checkbox"><span><b>Boats to Save People / Two Sum II</b> <span class="lvl">M</span><br><span class="hint">sort + ends.</span></span></li>
+<li><input type="checkbox"><span><b>Rotate Array / Reverse Words in a String</b> <span class="lvl">M</span><br><span class="hint">three reversals, in place.</span></span></li>
+<li><input type="checkbox"><span><b>First Missing Positive / Find the Duplicate Number / Missing Number</b> <span class="lvl h">H</span><br><span class="hint">cyclic sort / index marking / Floyd on values / XOR.</span></span></li>
+<li><input type="checkbox"><span><b>Next Permutation</b> <span class="lvl">M</span><br><span class="hint">find pivot from right, swap with next larger, reverse suffix.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Stack, monotonic stack, deque <span class="tag hot">hot</span></summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>Valid Parentheses</b> <span class="lvl e">E</span> <span class="tag hot">hot</span><br><span class="hint">stack of opens. Follow-up: Minimum Remove to Make Valid, Longest Valid Parentheses, min add to make valid.</span></span></li>
+<li><input type="checkbox"><span><b>Min Stack</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">parallel min stack. Follow-up: max stack with popMax (two heaps + lazy delete or sorted container).</span></span></li>
+<li><input type="checkbox"><span><b>Daily Temperatures / Next Greater Element I, II</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">monotonic decreasing stack of indices; circular = iterate 2n.</span></span></li>
+<li><input type="checkbox"><span><b>Largest Rectangle in Histogram / Maximal Rectangle</b> <span class="lvl h">H</span><br><span class="hint">increasing stack with sentinel; maximal rectangle = histogram per row.</span></span></li>
+<li><input type="checkbox"><span><b>Sliding Window Maximum</b> <span class="lvl h">H</span> <span class="tag hot">hot</span><br><span class="hint">monotonic deque of indices.</span></span></li>
+<li><input type="checkbox"><span><b>Decode String</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">stack of (prev string, repeat).</span></span></li>
+<li><input type="checkbox"><span><b>Evaluate Reverse Polish Notation / Basic Calculator I, II</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">stack; sign tracking for parens; int(a/b) truncation.</span></span></li>
+<li><input type="checkbox"><span><b>Asteroid Collision / Car Fleet</b> <span class="lvl">M</span><br><span class="hint">stack of survivors; fleets by arrival time sorted by position desc.</span></span></li>
+<li><input type="checkbox"><span><b>Simplify Path</b> <span class="lvl">M</span><br><span class="hint">split on '/', stack for '..'.</span></span></li>
+<li><input type="checkbox"><span><b>Remove K Digits / Remove Duplicate Letters</b> <span class="lvl">M</span><br><span class="hint">greedy monotonic stack keeping order.</span></span></li>
+<li><input type="checkbox"><span><b>Implement Queue using Stacks / Stack using Queues</b> <span class="lvl e">E</span><br><span class="hint">amortized analysis talk.</span></span></li>
+<li><input type="checkbox"><span><b>Exclusive Time of Functions</b> <span class="lvl">M</span><br><span class="hint">stack of call frames with timestamps of last switch.</span></span></li>
+<li><input type="checkbox"><span><b>Sum of Subarray Minimums</b> <span class="lvl">M</span><br><span class="hint">contribution with prev/next smaller.</span></span></li>
+<li><input type="checkbox"><span><b>Design Hit Counter</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">queue of (t, count). Follow-up: high QPS => bucket by second, ring buffer of 300.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Binary search</summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>Search in Rotated Sorted Array I / II, Find Minimum in Rotated Sorted Array</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">which half is sorted.</span></span></li>
+<li><input type="checkbox"><span><b>Find First and Last Position of Element</b> <span class="lvl">M</span><br><span class="hint">bisect_left / bisect_right.</span></span></li>
+<li><input type="checkbox"><span><b>Koko Eating Bananas / Capacity To Ship Packages Within D Days / Split Array Largest Sum</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">binary search on answer + feasibility.</span></span></li>
+<li><input type="checkbox"><span><b>Search a 2D Matrix I / II</b> <span class="lvl">M</span><br><span class="hint">flattened index; staircase from top-right.</span></span></li>
+<li><input type="checkbox"><span><b>Find Peak Element</b> <span class="lvl">M</span><br><span class="hint">go toward the bigger neighbour.</span></span></li>
+<li><input type="checkbox"><span><b>Time Based Key-Value Store</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">list of (t, v) per key + bisect_right.</span></span></li>
+<li><input type="checkbox"><span><b>Median of Two Sorted Arrays</b> <span class="lvl h">H</span><br><span class="hint">partition the shorter array.</span></span></li>
+<li><input type="checkbox"><span><b>Kth Smallest Element in a Sorted Matrix</b> <span class="lvl">M</span><br><span class="hint">binary search on value with count-less-equal via staircase; or heap.</span></span></li>
+<li><input type="checkbox"><span><b>Sqrt(x) / Valid Perfect Square / Guess Number</b> <span class="lvl e">E</span><br><span class="hint">last-true template.</span></span></li>
+<li><input type="checkbox"><span><b>Random Pick with Weight</b> <span class="lvl">M</span><br><span class="hint">prefix sums + bisect.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Linked lists</summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>Reverse Linked List / Reverse Linked List II / Reverse Nodes in k-Group</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">iterative three-pointer; group reversal with dummy.</span></span></li>
+<li><input type="checkbox"><span><b>Merge Two Sorted Lists / Merge k Sorted Lists</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">dummy tail; heap with (val, idx, node).</span></span></li>
+<li><input type="checkbox"><span><b>Linked List Cycle I / II</b> <span class="lvl e">E</span><br><span class="hint">Floyd.</span></span></li>
+<li><input type="checkbox"><span><b>Remove Nth Node From End / Middle of the Linked List</b> <span class="lvl e">E</span><br><span class="hint">lead/follow gap.</span></span></li>
+<li><input type="checkbox"><span><b>Add Two Numbers I / II</b> <span class="lvl">M</span><br><span class="hint">carry; II = reverse or stacks.</span></span></li>
+<li><input type="checkbox"><span><b>Copy List with Random Pointer</b> <span class="lvl">M</span><br><span class="hint">map old to new, or interleave clones.</span></span></li>
+<li><input type="checkbox"><span><b>Reorder List / Palindrome Linked List</b> <span class="lvl">M</span><br><span class="hint">middle + reverse second half + weave / compare.</span></span></li>
+<li><input type="checkbox"><span><b>LRU Cache</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">hashmap + doubly linked list. Be ready to write it without OrderedDict, then add TTL and thread safety.</span></span></li>
+<li><input type="checkbox"><span><b>LFU Cache</b> <span class="lvl h">H</span><br><span class="hint">freq buckets of OrderedDict + min_freq.</span></span></li>
+<li><input type="checkbox"><span><b>Intersection of Two Linked Lists</b> <span class="lvl e">E</span><br><span class="hint">switch heads when reaching the end.</span></span></li>
+<li><input type="checkbox"><span><b>Flatten a Multilevel Doubly Linked List / Sort List</b> <span class="lvl">M</span><br><span class="hint">stack DFS; merge sort on list.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Trees and BST <span class="tag hot">hot</span></summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>Binary Tree Level Order / Zigzag / Right Side View</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">BFS by level size.</span></span></li>
+<li><input type="checkbox"><span><b>Maximum Depth / Minimum Depth / Balanced Binary Tree / Diameter</b> <span class="lvl e">E</span> <span class="tag hot">hot</span><br><span class="hint">post-order return value.</span></span></li>
+<li><input type="checkbox"><span><b>Validate Binary Search Tree</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">bounds; or inorder is strictly increasing.</span></span></li>
+<li><input type="checkbox"><span><b>Lowest Common Ancestor of a Binary Tree / of a BST / with parent pointers</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">return-value recursion; BST walk; two-pointer with parents.</span></span></li>
+<li><input type="checkbox"><span><b>Kth Smallest Element in a BST / BST Iterator</b> <span class="lvl">M</span><br><span class="hint">iterative inorder with stack.</span></span></li>
+<li><input type="checkbox"><span><b>Binary Tree Maximum Path Sum</b> <span class="lvl h">H</span> <span class="tag hot">hot</span><br><span class="hint">gain per side, drop negatives.</span></span></li>
+<li><input type="checkbox"><span><b>Path Sum I / II / III</b> <span class="lvl">M</span><br><span class="hint">DFS with remaining; path list backtracking; prefix-sum map.</span></span></li>
+<li><input type="checkbox"><span><b>Construct Binary Tree from Preorder and Inorder / Postorder</b> <span class="lvl">M</span><br><span class="hint">inorder index map, consume preorder.</span></span></li>
+<li><input type="checkbox"><span><b>Serialize and Deserialize Binary Tree</b> <span class="lvl h">H</span> <span class="tag hot">hot</span><br><span class="hint">preorder with null markers.</span></span></li>
+<li><input type="checkbox"><span><b>Invert / Symmetric / Same Tree / Subtree of Another Tree</b> <span class="lvl e">E</span><br><span class="hint">recursion on pairs.</span></span></li>
+<li><input type="checkbox"><span><b>Vertical Order Traversal / Boundary of Binary Tree / Top View</b> <span class="lvl">M</span><br><span class="hint">BFS with column; sort by (col, row, val) for the strict version.</span></span></li>
+<li><input type="checkbox"><span><b>Flatten Binary Tree to Linked List</b> <span class="lvl">M</span><br><span class="hint">rightmost of left subtree.</span></span></li>
+<li><input type="checkbox"><span><b>Count Good Nodes / Sum Root to Leaf Numbers / House Robber III</b> <span class="lvl">M</span><br><span class="hint">DFS carrying state down; rob returns (with, without).</span></span></li>
+<li><input type="checkbox"><span><b>Convert Sorted Array to BST / Delete Node in a BST / Inorder Successor</b> <span class="lvl">M</span><br><span class="hint">middle as root; successor replacement.</span></span></li>
+<li><input type="checkbox"><span><b>All Nodes Distance K in Binary Tree</b> <span class="lvl">M</span><br><span class="hint">build parent map, BFS from target.</span></span></li>
+<li><input type="checkbox"><span><b>Implement Trie / Design Add and Search Words / Word Search II</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">trie; wildcard DFS; trie-guided grid DFS with pruning.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Heaps</summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>Kth Largest Element in an Array / in a Stream</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">min-heap of size k; quickselect for O(n) average.</span></span></li>
+<li><input type="checkbox"><span><b>Find Median from Data Stream</b> <span class="lvl h">H</span> <span class="tag hot">hot</span><br><span class="hint">two heaps. Follow-up: sliding window median, values bounded (counting).</span></span></li>
+<li><input type="checkbox"><span><b>K Closest Points to Origin</b> <span class="lvl">M</span><br><span class="hint">max-heap of size k on distance.</span></span></li>
+<li><input type="checkbox"><span><b>Task Scheduler</b> <span class="lvl">M</span><br><span class="hint">formula or heap + cooldown queue.</span></span></li>
+<li><input type="checkbox"><span><b>Reorganize String / Rearrange String k Distance Apart</b> <span class="lvl">M</span><br><span class="hint">max-heap with held-back element.</span></span></li>
+<li><input type="checkbox"><span><b>Last Stone Weight / Minimum Cost to Connect Sticks</b> <span class="lvl e">E</span><br><span class="hint">repeatedly pop two.</span></span></li>
+<li><input type="checkbox"><span><b>Ugly Number II / Kth Smallest Pair Distance / Find K Pairs with Smallest Sums</b> <span class="lvl">M</span><br><span class="hint">heap-driven generation, or binary search on value.</span></span></li>
+<li><input type="checkbox"><span><b>Meeting Rooms II</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">heap of end times.</span></span></li>
+<li><input type="checkbox">
+<span><b>Design Twitter</b> <span class="lvl">M</span><br><span class="hint">K-way merge of followee tweet lists.</span></span></li>
+<li><input type="checkbox"><span><b>Single-Threaded CPU / Process Tasks Using Servers</b> <span class="lvl">M</span><br><span class="hint">event-time simulation with two heaps.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Intervals and scheduling <span class="tag hot">hot</span></summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>Merge Intervals</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">sort by start. Follow-up: stream of intervals (sorted list + bisect), count merged ranges.</span></span></li>
+<li><input type="checkbox"><span><b>Insert Interval</b> <span class="lvl">M</span><br><span class="hint">three phases.</span></span></li>
+<li><input type="checkbox"><span><b>Meeting Rooms I / II</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">sort + adjacent check; heap of ends or sweep line. Follow-up: which room each meeting goes to, max concurrent time.</span></span></li>
+<li><input type="checkbox"><span><b>Non-overlapping Intervals / Minimum Number of Arrows</b> <span class="lvl">M</span><br><span class="hint">greedy by end.</span></span></li>
+<li><input type="checkbox"><span><b>Interval List Intersections</b> <span class="lvl">M</span><br><span class="hint">two pointers, advance the one ending first.</span></span></li>
+<li><input type="checkbox"><span><b>Employee Free Time</b> <span class="lvl h">H</span><br><span class="hint">flatten, sort, gaps.</span></span></li>
+<li><input type="checkbox"><span><b>My Calendar I / II / III</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">sorted list check; difference map for k-booking.</span></span></li>
+<li><input type="checkbox"><span><b>Maximum Number of Events That Can Be Attended</b> <span class="lvl">M</span><br><span class="hint">day sweep with min-heap of end days.</span></span></li>
+<li><input type="checkbox"><span><b>Merge logs by timestamp / Find busiest time slot</b> <span class="lvl">M</span><br><span class="hint">K-way merge of sorted streams; sweep line max concurrency. Common Salesforce "practical" framing.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Graphs <span class="tag hot">hot</span></summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>Number of Islands / Max Area of Island / Number of Provinces</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">grid DFS/BFS or DSU. Follow-up: Number of Islands II (online, DSU), count distinct island shapes.</span></span></li>
+<li><input type="checkbox"><span><b>Rotting Oranges / Walls and Gates / 01 Matrix</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">multi-source BFS.</span></span></li>
+<li><input type="checkbox"><span><b>Course Schedule I / II</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">Kahn's topological sort; cycle if order shorter than n.</span></span></li>
+<li><input type="checkbox"><span><b>Clone Graph</b> <span class="lvl">M</span><br><span class="hint">BFS with old-to-new map.</span></span></li>
+<li><input type="checkbox"><span><b>Pacific Atlantic Water Flow / Surrounded Regions</b> <span class="lvl">M</span><br><span class="hint">reverse flood from borders.</span></span></li>
+<li><input type="checkbox"><span><b>Word Ladder</b> <span class="lvl h">H</span><br><span class="hint">BFS over wildcard buckets; bidirectional as follow-up.</span></span></li>
+<li><input type="checkbox"><span><b>Graph Valid Tree / Redundant Connection / Number of Connected Components</b> <span class="lvl">M</span><br><span class="hint">DSU.</span></span></li>
+<li><input type="checkbox"><span><b>Accounts Merge</b> <span class="lvl">M</span><br><span class="hint">DSU over emails, group by root, sort.</span></span></li>
+<li><input type="checkbox"><span><b>Network Delay Time / Cheapest Flights Within K Stops / Path with Maximum Probability</b> <span class="lvl">M</span><br><span class="hint">Dijkstra; Bellman-Ford K rounds.</span></span></li>
+<li><input type="checkbox"><span><b>Alien Dictionary</b> <span class="lvl h">H</span><br><span class="hint">edges from adjacent words, topo sort, prefix invalid case.</span></span></li>
+<li><input type="checkbox"><span><b>Is Graph Bipartite / Possible Bipartition</b> <span class="lvl">M</span><br><span class="hint">2-coloring BFS.</span></span></li>
+<li><input type="checkbox"><span><b>Shortest Path in Binary Matrix / Open the Lock / Minimum Genetic Mutation</b> <span class="lvl">M</span><br><span class="hint">BFS on states.</span></span></li>
+<li><input type="checkbox"><span><b>Evaluate Division</b> <span class="lvl">M</span><br><span class="hint">weighted graph DFS or weighted DSU.</span></span></li>
+<li><input type="checkbox"><span><b>Reconstruct Itinerary</b> <span class="lvl h">H</span><br><span class="hint">Hierholzer with sorted adjacency.</span></span></li>
+<li><input type="checkbox"><span><b>Min Cost to Connect All Points / Swim in Rising Water</b> <span class="lvl">M</span><br><span class="hint">Prim / Kruskal; minimax Dijkstra or DSU on sorted cells.</span></span></li>
+<li><input type="checkbox"><span><b>Critical Connections in a Network</b> <span class="lvl h">H</span><br><span class="hint">Tarjan bridges.</span></span></li>
+<li><input type="checkbox"><span><b>Employee Importance / Nested List Weight Sum / Flatten nested dictionary</b> <span class="lvl">M</span><br><span class="hint">DFS with depth. Practical-round favourites.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Backtracking</summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>Subsets I / II, Permutations I / II, Combinations</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">choose / explore / unchoose; dedupe with sort + skip.</span></span></li>
+<li><input type="checkbox"><span><b>Combination Sum I / II / III</b> <span class="lvl">M</span><br><span class="hint">start index controls reuse; prune on sorted.</span></span></li>
+<li><input type="checkbox"><span><b>Generate Parentheses</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">open &lt; n, close &lt; open.</span></span></li>
+<li><input type="checkbox"><span><b>Letter Combinations of a Phone Number</b> <span class="lvl">M</span><br><span class="hint">iterative cartesian build.</span></span></li>
+<li><input type="checkbox"><span><b>Word Search</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">DFS with in-place marking.</span></span></li>
+<li><input type="checkbox"><span><b>N-Queens / Sudoku Solver</b> <span class="lvl h">H</span><br><span class="hint">sets for cols and diagonals.</span></span></li>
+<li><input type="checkbox"><span><b>Palindrome Partitioning / Restore IP Addresses</b> <span class="lvl">M</span><br><span class="hint">cut positions with validity check.</span></span></li>
+<li><input type="checkbox"><span><b>Word Break II / Expression Add Operators</b> <span class="lvl h">H</span><br><span class="hint">memoized backtracking; track last operand for multiplication.</span></span></li>
+<li><input type="checkbox"><span><b>Partition to K Equal Sum Subsets / Matchsticks to Square</b> <span class="lvl">M</span><br><span class="hint">bucket backtracking with pruning, sort desc.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Dynamic programming</summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>Climbing Stairs / Min Cost Climbing Stairs / Fibonacci</b> <span class="lvl e">E</span><br><span class="hint">two variables.</span></span></li>
+<li><input type="checkbox"><span><b>House Robber I / II</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">take / skip.</span></span></li>
+<li><input type="checkbox"><span><b>Coin Change / Coin Change II</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">min coins; count combinations (coins outer).</span></span></li>
+<li><input type="checkbox"><span><b>Word Break</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">dp[i] over cut points; trie or max word length to bound.</span></span></li>
+<li><input type="checkbox"><span><b>Longest Increasing Subsequence / Russian Doll Envelopes</b> <span class="lvl">M</span><br><span class="hint">patience with bisect.</span></span></li>
+<li><input type="checkbox"><span><b>Longest Common Subsequence / Edit Distance / Delete Operation for Two Strings</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">2D string DP.</span></span></li>
+<li><input type="checkbox"><span><b>Longest Palindromic Substring / Palindromic Substrings / Longest Palindromic Subsequence</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">expand around centre; LCS with reverse.</span></span></li>
+<li><input type="checkbox"><span><b>Unique Paths I / II, Minimum Path Sum, Maximal Square, Triangle</b> <span class="lvl">M</span><br><span class="hint">grid DP with one rolling row.</span></span></li>
+<li><input type="checkbox"><span><b>Partition Equal Subset Sum / Target Sum / Last Stone Weight II</b> <span class="lvl">M</span><br><span class="hint">0/1 knapsack with reverse capacity loop.</span></span></li>
+<li><input type="checkbox"><span><b>Best Time to Buy and Sell Stock I / II / with Cooldown / with Fee / III / IV</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">state machine.</span></span></li>
+<li><input type="checkbox"><span><b>Decode Ways</b> <span class="lvl">M</span><br><span class="hint">two-variable DP with '0' handling.</span></span></li>
+<li><input type="checkbox"><span><b>Jump Game I / II</b> <span class="lvl">M</span><br><span class="hint">greedy reach (DP is the fallback).</span></span></li>
+<li><input type="checkbox"><span><b>Regular Expression Matching / Wildcard Matching / Interleaving String / Distinct Subsequences</b> <span class="lvl h">H</span><br><span class="hint">memoized (i, j).</span></span></li>
+<li><input type="checkbox"><span><b>Burst Balloons / Minimum Cost to Cut a Stick</b> <span class="lvl h">H</span><br><span class="hint">interval DP, choose last.</span></span></li>
+<li><input type="checkbox"><span><b>Maximum Product Subarray / Longest Turbulent Subarray</b> <span class="lvl">M</span><br><span class="hint">track two states.</span></span></li>
+<li><input type="checkbox"><span><b>Number of Longest Increasing Subsequence / Count Vowel Strings / Knight Dialer</b> <span class="lvl">M</span><br><span class="hint">count with DP over transitions.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Strings and parsing (practical round favourites) <span class="tag hot">hot</span></summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>String to Integer (atoi) / Compare Version Numbers / Roman to Integer</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">careful parsing, overflow clamp.</span></span></li>
+<li><input type="checkbox"><span><b>String Compression / Run-length decode / Count and Say</b> <span class="lvl">M</span><br><span class="hint">read/write with run counting.</span></span></li>
+<li><input type="checkbox"><span><b>Integer to English Words / Integer to Roman / Excel Sheet Column Title</b> <span class="lvl">M</span><br><span class="hint">chunks of three; greedy table; base-26 with offset.</span></span></li>
+<li><input type="checkbox"><span><b>Text Justification / Reverse Words in a String / Zigzag Conversion</b> <span class="lvl">M</span><br><span class="hint">line packing; string rows.</span></span></li>
+<li><input type="checkbox"><span><b>Longest Common Prefix / Implement strStr (KMP) / Repeated Substring Pattern</b> <span class="lvl e">E</span><br><span class="hint">vertical scan; KMP failure.</span></span></li>
+<li><input type="checkbox"><span><b>Multiply Strings / Add Strings / Add Binary</b> <span class="lvl">M</span><br><span class="hint">digit arrays with carry.</span></span></li>
+<li><input type="checkbox"><span><b>Custom Sort String / Sort Characters By Frequency / Backspace String Compare</b> <span class="lvl">M</span><br><span class="hint">rank map; two pointers from the back.</span></span></li>
+<li><input type="checkbox"><span><b>Number of Matching Subsequences / Is Subsequence</b> <span class="lvl">M</span><br><span class="hint">buckets of iterators by next char.</span></span></li>
+<li><input type="checkbox"><span><b>Design Search Autocomplete System / Prefix and Suffix Search / Longest Word in Dictionary</b> <span class="lvl h">H</span><br><span class="hint">trie with top-k per node.</span></span></li>
+<li><input type="checkbox"><span><b>Parse a JSON-like / CSV-like string, evaluate an expression, tokenize a query</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">recursive descent: parse_value -> parse_object / parse_array / parse_primitive. Common Salesforce practical round.</span></span></li>
+<li><input type="checkbox"><span><b>Validate IP Address / Valid Number</b> <span class="lvl">M</span><br><span class="hint">state machine or careful split.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Matrix</summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>Spiral Matrix I / II</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">shrinking bounds.</span></span></li>
+<li><input type="checkbox"><span><b>Rotate Image / Transpose</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">transpose + reverse rows.</span></span></li>
+<li><input type="checkbox"><span><b>Set Matrix Zeroes</b> <span class="lvl">M</span><br><span class="hint">first row/col as marker.</span></span></li>
+<li><input type="checkbox"><span><b>Valid Sudoku</b> <span class="lvl">M</span><br><span class="hint">three sets per index.</span></span></li>
+<li><input type="checkbox"><span><b>Game of Life</b> <span class="lvl">M</span><br><span class="hint">bit-encode next state.</span></span></li>
+<li><input type="checkbox"><span><b>Diagonal Traverse / Toeplitz Matrix</b> <span class="lvl">M</span><br><span class="hint">group by r + c / r - c.</span></span></li>
+<li><input type="checkbox"><span><b>Word Search / Number of Islands</b> <span class="lvl">M</span><br><span class="hint">see graphs and backtracking.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Design a class (the Salesforce "practical" round) <span class="tag hot">hot</span></summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>LRU Cache / LFU Cache / Cache with TTL</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">see DS templates. Follow-up chain: TTL, thread safety, size-based eviction, write-back to DB.</span></span></li>
+<li><input type="checkbox"><span><b>Rate limiter (sliding window log / fixed window counter / token bucket)</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">per-client deque; talk about memory and burst behaviour, Redis for distributed.</span></span></li>
+<li><input type="checkbox"><span><b>Design Hit Counter / Logger Rate Limiter / Time Based Key-Value Store</b> <span class="lvl">M</span> <span class="tag hot">hot</span><br><span class="hint">deque, dict of next-allowed, bisect.</span></span></li>
+<li><input type="checkbox"><span><b>Design Tic-Tac-Toe / Snake Game / Connect Four</b> <span class="lvl">M</span><br><span class="hint">O(1) win check counters.</span></span></li>
+<li><input type="checkbox"><span><b>Design In-Memory File System / File System (create path) / Design a key-value store with transactions</b> <span class="lvl h">H</span><br><span class="hint">trie of dicts; transaction = stack of undo logs.</span></span></li>
+<li><input type="checkbox"><span><b>Peeking Iterator / Flatten Nested List Iterator / Zigzag Iterator / Flatten 2D Vector</b> <span class="lvl">M</span><br><span class="hint">buffered next; lazy stack.</span></span></li>
+<li><input type="checkbox"><span><b>Design Browser History / Text Editor with undo-redo</b> <span class="lvl">M</span><br><span class="hint">two stacks.</span></span></li>
+<li><input type="checkbox"><span><b>Design Parking System / Parking Lot (OOP)</b> <span class="lvl e">E</span><br><span class="hint">counters; full LLD version in section 10.</span></span></li>
+<li><input type="checkbox"><span><b>Leaderboard / Top K trending hashtags / Design Twitter feed</b> <span class="lvl">M</span><br><span class="hint">dict + heap; K-way merge.</span></span></li>
+<li><input type="checkbox"><span><b>Design Circular Queue / Circular Deque / Front Middle Back Queue</b> <span class="lvl">M</span><br><span class="hint">ring buffer with head and size.</span></span></li>
+<li><input type="checkbox"><span><b>Task scheduler with dependencies / Job queue with priorities and retries</b> <span class="lvl">M</span><br><span class="hint">topo sort + heap; backoff queue.</span></span></li>
+<li><input type="checkbox"><span><b>Shuffle an Array / Random Pick Index / Reservoir sampling</b> <span class="lvl">M</span><br><span class="hint">Fisher-Yates; reservoir.</span></span></li>
+<li><input type="checkbox"><span><b>Elevator scheduling (simulate requests, choose direction)</b> <span class="lvl">M</span><br><span class="hint">SCAN / LOOK algorithm; two sorted sets of stops.</span></span></li>
+</ul>
+</div></details>
+
+<details class="card" open><summary>Bits and math</summary><div class="body">
+<ul class="q">
+<li><input type="checkbox"><span><b>Single Number I / II / III</b> <span class="lvl e">E</span><br><span class="hint">xor; bit counting mod 3; split by lowest set bit.</span></span></li>
+<li><input type="checkbox"><span><b>Number of 1 Bits / Counting Bits / Reverse Bits / Power of Two</b> <span class="lvl e">E</span><br><span class="hint">n &amp; (n-1).</span></span></li>
+<li><input type="checkbox"><span><b>Missing Number / Sum of Two Integers</b> <span class="lvl e">E</span><br><span class="hint">xor or arithmetic; xor + carry loop with 32-bit mask.</span></span></li>
+<li><input type="checkbox"><span><b>Pow(x, n) / Sqrt(x) / Divide Two Integers</b> <span class="lvl">M</span><br><span class="hint">fast exponent; binary search; doubling subtraction.</span></span></li>
+<li><input type="checkbox"><span><b>Happy Number / Fizz Buzz / Count Primes / Excel Sheet Column</b> <span class="lvl e">E</span><br><span class="hint">cycle detect; sieve; base 26.</span></span></li>
+<li><input type="checkbox"><span><b>Random Pick with Weight / Shuffle an Array</b> <span class="lvl">M</span><br><span class="hint">prefix + bisect; Fisher-Yates.</span></span></li>
+</ul>
+</div></details>
+</section>
+
+<section id="followups">
+<h2>10. Follow-ups they throw mid-solve (prepare the answer before they ask)</h2>
+<div class="card static">
+<div class="tbl"><table>
+<tr><th>Original</th><th>Constraint change</th><th>New answer</th></tr>
+<tr><td>Two Sum (dict)</td><td>Input is sorted / must be O(1) space</td><td>Two pointers</td></tr>
+<tr><td>Two Sum</td><td>Return all pairs, with duplicates counted once</td><td>Sort + two pointers with dupe skipping, or Counter arithmetic</td></tr>
+<tr><td>Sliding window sum &gt;= target</td><td>Negatives allowed</td><td>Prefix sums + monotonic deque (shortest subarray with sum at least K)</td></tr>
+<tr><td>Max subarray (Kadane)</td><td>Array is circular</td><td>max(kadane, total - min_subarray), guard all-negative</td></tr>
+<tr><td>Top K frequent</td><td>Stream, unbounded</td><td>Count-min sketch / heavy hitters, or exact with dict + heap if memory allows</td></tr>
+<tr><td>Kth largest</td><td>Stream</td><td>Min-heap of size k</td></tr>
+<tr><td>Kth largest</td><td>Must be O(n)</td><td>Quickselect, mention worst case and median-of-medians</td></tr>
+<tr><td>Merge intervals</td><td>Intervals arrive one by one</td><td>Sorted list + bisect (or balanced tree), merge neighbours on insert</td></tr>
+<tr><td>Meeting rooms II</td><td>Return which room each meeting uses</td><td>Heap of (end, room_id) + heap of free room ids</td></tr>
+<tr><td>Meeting rooms II</td><td>Find the time with most concurrent meetings</td><td>Sweep line, track max and its timestamp</td></tr>
+<tr><td>BFS shortest path</td><td>Weighted edges</td><td>Dijkstra; 0/1 weights: 0-1 BFS; negative: Bellman-Ford</td></tr>
+<tr><td>Number of islands</td><td>Land added one cell at a time, answer after each</td><td>Union-Find with online component count</td></tr>
+<tr><td>Number of islands</td><td>Grid does not fit in memory</td><td>Row-by-row streaming with DSU over the previous row</td></tr>
+<tr><td>Course schedule</td><td>Return an order; return lexicographically smallest</td><td>Kahn's; min-heap in place of queue</td></tr>
+<tr><td>LRU cache</td><td>Entries expire after TTL</td><td>Store expiry; check on get; lazy purge or a min-heap by expiry</td></tr>
+<tr><td>LRU cache</td><td>Concurrent access</td><td>Lock around get/put (or striped locks); mention read-write lock tradeoffs</td></tr>
+<tr><td>LRU cache</td><td>No OrderedDict allowed</td><td>Hand-rolled doubly linked list with sentinels</td></tr>
+<tr><td>Rate limiter (deque log)</td><td>Millions of clients</td><td>Fixed-window counters or token bucket: O(1) memory per client; Redis for distributed</td></tr>
+<tr><td>Rate limiter</td><td>Allow bursts</td><td>Token bucket (capacity = burst, rate = sustained)</td></tr>
+<tr><td>Hit counter</td><td>Very high QPS</td><td>Bucket by second, ring buffer of 300 counters</td></tr>
+<tr><td>Binary search on sorted array</td><td>Rotated / has duplicates</td><td>Half-sorted check; shrink both ends on triple equality (O(n) worst)</td></tr>
+<tr><td>Tree recursion</td><td>Tree has 10^6 nodes (deep)</td><td>Iterative with explicit stack, or bump recursion limit and explain the risk</td></tr>
+<tr><td>Serialize tree</td><td>Values can be negative / multi-digit / null</td><td>Delimited tokens, not fixed width</td></tr>
+<tr><td>Word Break (bool)</td><td>Return all sentences</td><td>Memoized backtracking (Word Break II)</td></tr>
+<tr><td>0/1 knapsack</td><td>Items reusable</td><td>Iterate capacity upward (unbounded)</td></tr>
+<tr><td>Coin change ways</td><td>Order matters</td><td>Swap loop order (Combination Sum IV)</td></tr>
+<tr><td>Edit distance</td><td>Memory limited</td><td>Two rows; O(min(m, n)) space</td></tr>
+<tr><td>Dijkstra</td><td>Find the path, not just distance</td><td>Parent array, walk back from target</td></tr>
+<tr><td>Anagram grouping</td><td>Unicode / huge alphabet</td><td>Sorted string key instead of count tuple</td></tr>
+<tr><td>Anything with a dict</td><td>Worst-case O(n) hash collisions?</td><td>Mention it; propose a tree map if needed</td></tr>
+<tr><td>Anything recursive</td><td>"Make it iterative"</td><td>Explicit stack with (node, state) tuples</td></tr>
+<tr><td>Anything with sorting</td><td>"Can you do better than n log n?"</td><td>Counting / bucket sort when values are bounded; heap if only top K needed</td></tr>
+<tr><td>Any design class</td><td>"Now it is distributed"</td><td>Shard by key, Redis/consistent hashing, idempotency, clock skew</td></tr>
+</table></div>
+<div class="note"><b>What breaks it (say before they ask):</b> empty input, single element, all equal, negatives and zeros, duplicates, K = 0 or K &gt; N, target not present, disconnected graph, self-loops, cycles, very deep recursion, integer overflow in other languages (say Python is safe but you would use long / check bounds elsewhere), unsorted when you assumed sorted, non-monotonic timestamps.</div>
+</div>
+</section>

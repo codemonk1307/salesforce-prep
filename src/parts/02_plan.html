@@ -1,0 +1,130 @@
+
+<section id="plan">
+<h2>2. The 30-day pattern-recognition program</h2>
+<div class="card static">
+<p><b>Target skill:</b> read an unfamiliar problem, name the pattern in under 60 seconds, derive the algorithm, code it clean, defend it. <b>Non-goal:</b> problem count.</p>
+<h4>Ground rules</h4>
+<ol>
+<li>Every problem is served <b>without a topic label</b>. Classify first, code second.</li>
+<li>Before writing any code, answer the Eight Questions (section 3).</li>
+<li>Hints are released in stages, never all at once. Take "hint 1" only after 10 minutes stuck.</li>
+<li>Every mistake goes in the Error Log with a <b>category</b>, not a description.</li>
+<li>A problem is not done when it passes. It is done when you can re-derive it cold a week later.</li>
+</ol>
+<div class="warn"><b>Timeline note:</b> openings expected mid-to-late September 2026, so the call can land before day 30. The plan is front-loaded on purpose: weeks 1 to 3 carry the highest Salesforce hit rate. If the call comes early, keep the sequence, compress it, and interleave week-4 mocks instead of saving them.</div>
+</div>
+
+<details class="card" open><summary>Weekly arc</summary><div class="body">
+<div class="tbl"><table>
+<tr><th>Week</th><th>Topics</th><th>Goal</th></tr>
+<tr><td><b>Week 1</b> (days 1 to 7)<br>Core vocabulary</td><td>Arrays, hashing, frequency maps, prefix sums, difference arrays, two pointers, sliding window (fixed + variable), Kadane, in-place manipulation, matrix traversal, strings, linked lists, stack, queue, monotonic stack, monotonic deque</td><td>Trigger reflexes. By day 7 the words "contiguous", "next greater", "at most K", "sorted", "in-place" fire an instant hypothesis.</td></tr>
+<tr><td><b>Week 2</b> (days 8 to 14)<br>Search, trees, heaps, intervals, greedy</td><td>Binary search boundaries, rotated arrays, first/last occurrence, <b>binary search on answer</b> (highest ROI of the week), tree DFS/BFS, recursive return-value design, BST invariants, LCA, path problems, tree construction, heaps (top K, K-way merge, two heaps, streaming median), interval merge/overlap/sweep line, greedy with exchange argument</td><td>Patterns one layer beneath the surface. The problem no longer says what it is.</td></tr>
+<tr><td><b>Week 3</b> (days 15 to 21)<br>Graphs, backtracking, DP</td><td>Grid graphs, multi-source BFS, cycle detection (directed vs undirected), topological sort, Union-Find with path compression, Dijkstra, backtracking with pruning, DP: 1D, 2D, grid, knapsack (0/1 + unbounded), subsequence DP, string DP, state-machine DP, memo to tab to space-optimized</td><td>Derivation over recall. Invent the recurrence, do not remember it.</td></tr>
+<tr><td><b>Week 4</b> (days 22 to 30)<br>Interview mode</td><td>No labels, mixed difficulty, timed. Pattern-combination problems. Follow-ups that change constraints mid-solve. Full mocks with pushback. Spaced re-solves of everything missed in weeks 1 to 3. Plus 2 LLD + 2 behavioral mocks.</td><td>Instinct under pressure.</td></tr>
+</table></div>
+</div></details>
+
+<details class="card" open><summary>Daily loop (3 to 4 hours, scalable)</summary><div class="body">
+<div class="tbl"><table>
+<tr><th>Block</th><th>Time</th><th>What</th></tr>
+<tr><td>Speed drill</td><td>15 min</td><td>8 to 10 problem <i>statements only</i>. Say the pattern out loud. No solving.</td></tr>
+<tr><td>Pattern learning</td><td>30 min</td><td>One pattern, its invariant, its failure modes (use the Algo templates section).</td></tr>
+<tr><td>Guided problems</td><td>60 min</td><td>2 problems where the pattern is visible. Full template: Eight Questions, code, tests, complexity.</td></tr>
+<tr><td>Blind problems</td><td>60 min</td><td>1 to 2 problems, no topic given, timed 25 min each.</td></tr>
+<tr><td>Implementation drill</td><td>20 min</td><td>Code a known algorithm from scratch, fast, no reference (DS templates section, pick one at random).</td></tr>
+<tr><td>Error log + retrieval</td><td>20 min</td><td>Log failures by category. Re-solve one problem from 3+ days ago.</td></tr>
+</table></div>
+<div class="good">If a day gets compressed: keep <b>speed drill + blind problems</b>. Drop the rest.</div>
+</div></details>
+
+<details class="card" open><summary>Highest-priority topics for a Salesforce-style loop (defend these first)</summary><div class="body">
+<ol>
+<li>Hashing and frequency maps (appears everywhere)</li>
+<li>Sliding window and prefix sums (and knowing which one, given negatives)</li>
+<li>Two pointers</li>
+<li>Monotonic stack</li>
+<li>Binary search on answer</li>
+<li>Trees: DFS with a designed return value, BFS by level, LCA</li>
+<li>Heaps: top K, K-way merge</li>
+<li>Intervals: merge, overlap, meeting rooms</li>
+<li>Graphs: grid BFS/DFS, topological sort, Union-Find</li>
+<li>DP: 1D, grid, 0/1 knapsack, string DP</li>
+<li><b>Salesforce extra:</b> LRU / LFU cache, rate limiter, in-place string and matrix manipulation, iterator / stream design classes</li>
+</ol>
+<p class="small">Everything else is upside.</p>
+</div></details>
+</section>
+
+<section id="eight">
+<h2>3. The Eight Questions (answer before coding, every time)</h2>
+<div class="card static">
+<ol>
+<li><b>What are the constraints?</b> N, value range, negatives, duplicates, sortedness.</li>
+<li><b>What observations does the structure give me?</b> (sorted, bounded alphabet, tree, DAG, small K)</li>
+<li><b>What is the brute force?</b></li>
+<li><b>Why is brute force too slow?</b> State the exact complexity.</li>
+<li><b>What pattern or data structure removes the redundant work?</b></li>
+<li><b>What invariant do I maintain?</b></li>
+<li><b>What is the time and auxiliary space complexity, and why?</b></li>
+<li><b>What breaks it?</b> Empty, single element, all equal, negatives, overflow, cycles, duplicates, K &gt; N.</li>
+</ol>
+</div>
+</section>
+
+<section id="triggers">
+<h2>4. Trigger table and constraints-to-complexity</h2>
+<details class="card" open><summary>Trigger table (memorize the left column, not the right)</summary><div class="body">
+<div class="tbl"><table>
+<tr><th>Signal in the statement</th><th>First hypothesis</th></tr>
+<tr><td>contiguous subarray/substring + constraint</td><td>Sliding window</td></tr>
+<tr><td>contiguous + sum equals K + <b>negatives present</b></td><td>Prefix sum + hashmap (window is invalid)</td></tr>
+<tr><td>count subarrays with "exactly K"</td><td>atMost(K) - atMost(K-1)</td></tr>
+<tr><td>sorted array + pair/triplet/target</td><td>Two pointers</td></tr>
+<tr><td>opposite ends, palindrome, partition, in-place remove</td><td>Two pointers (read/write index)</td></tr>
+<tr><td>next/previous greater or smaller, histogram, span, "how many days until"</td><td>Monotonic stack</td></tr>
+<tr><td>max/min in every window of size K</td><td>Monotonic deque</td></tr>
+<tr><td>minimize the maximum / maximize the minimum</td><td>Binary search on answer</td></tr>
+<tr><td>"minimum capacity/speed/days to achieve X" with a monotone feasibility</td><td>Binary search on answer + feasibility fn</td></tr>
+<tr><td>rotated sorted array, first/last position, peak</td><td>Modified binary search</td></tr>
+<tr><td>top K, K largest/smallest, streaming, "as they arrive"</td><td>Heap</td></tr>
+<tr><td>merge K sorted things</td><td>Heap (K-way merge)</td></tr>
+<tr><td>running median</td><td>Two heaps</td></tr>
+<tr><td>overlapping intervals, meeting rooms, scheduling, calendar</td><td>Sort + sweep line or min-heap of end times</td></tr>
+<tr><td>shortest path, unweighted, fewest moves, levels, "minimum steps"</td><td>BFS</td></tr>
+<tr><td>shortest path, weighted, non-negative</td><td>Dijkstra</td></tr>
+<tr><td>grid with 0/1 weights</td><td>0-1 BFS (deque)</td></tr>
+<tr><td>all regions / islands / connected components</td><td>DFS or BFS or DSU</td></tr>
+<tr><td>dynamic connectivity, "are these connected", redundant edge, merge groups</td><td>Union-Find</td></tr>
+<tr><td>prerequisites, dependency, ordering, DAG, "build order"</td><td>Topological sort (Kahn's)</td></tr>
+<tr><td>all subsets/permutations/combinations, constraint search, N small</td><td>Backtracking + pruning</td></tr>
+<tr><td>count the ways / optimal with overlapping subproblems</td><td>DP</td></tr>
+<tr><td>choose or skip at each index, target sum, partition</td><td>0/1 knapsack shape</td></tr>
+<tr><td>two strings compared position by position</td><td>2D string DP</td></tr>
+<tr><td>buy/sell, hold/not-hold, cooldown</td><td>State-machine DP</td></tr>
+<tr><td>prefix matching, autocomplete, word dictionary, "starts with"</td><td>Trie</td></tr>
+<tr><td>N &lt;= 20, subsets of a set, "visited set of items"</td><td>Bitmask</td></tr>
+<tr><td>cycle in linked list, middle node, Kth from end</td><td>Fast/slow pointers</td></tr>
+<tr><td>nested structure, matching brackets, "undo", parse expression</td><td>Stack</td></tr>
+<tr><td>numbers in range 1..N, find missing/duplicate in O(1) space</td><td>Cyclic sort or index marking or XOR</td></tr>
+<tr><td>O(1) get + O(1) insert + O(1) delete + random / eviction</td><td>Hashmap + list (swap-pop) or hashmap + doubly linked list</td></tr>
+<tr><td>range sum with updates</td><td>Fenwick / segment tree; without updates: prefix sums</td></tr>
+<tr><td>"stream of requests in last N seconds"</td><td>Queue / deque (sliding window over time)</td></tr>
+</table></div>
+<div class="warn"><b>Discipline:</b> a trigger produces a <i>hypothesis</i>, not an answer. Always test it against the constraints before committing. Half of interview traps are a problem that looks like pattern A and is actually pattern B (sliding window with negatives, greedy that needs DP, BFS on a weighted graph).</div>
+</div></details>
+
+<details class="card" open><summary>Constraints to complexity (read N first, always)</summary><div class="body">
+<div class="tbl"><table>
+<tr><th>N</th><th>Acceptable complexity</th><th>Candidate techniques</th></tr>
+<tr><td>&lt;= 12</td><td>O(N!)</td><td>permutation backtracking</td></tr>
+<tr><td>&lt;= 20</td><td>O(2^N)</td><td>subsets, bitmask DP</td></tr>
+<tr><td>&lt;= 100</td><td>O(N^3)</td><td>Floyd-Warshall, interval DP</td></tr>
+<tr><td>&lt;= 1,000</td><td>O(N^2)</td><td>2D DP, pairwise scans</td></tr>
+<tr><td>&lt;= 10^5</td><td>O(N log N)</td><td>sorting, heap, binary search, monotonic stack</td></tr>
+<tr><td>&lt;= 10^6</td><td>O(N)</td><td>hashing, two pointers, sliding window, prefix sums</td></tr>
+<tr><td>&lt;= 10^9 as a <i>value</i></td><td>O(log N)</td><td>binary search on the answer space, math</td></tr>
+<tr><td>&lt;= 10^18</td><td>O(log N) or O(1)</td><td>math, digit tricks, fast power</td></tr>
+</table></div>
+<p class="small">Python does roughly 10^7 simple operations per second in judge conditions. N=10^5 with O(N^2) is 10^10, dead. N=10^5 with O(N log N) is 1.7 million, fine.</p>
+</div></details>
+</section>

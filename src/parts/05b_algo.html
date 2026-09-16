@@ -1,0 +1,1031 @@
+
+<details class="card"><summary>Graphs: BFS, DFS, grid islands, multi-source BFS, 0-1 BFS, bipartite <span class="tag hot">top priority</span></summary><div class="body">
+<p><b>BFS invariant:</b> when a node is dequeued, its distance is final (unweighted). Mark visited on enqueue. <b>DFS:</b> use for components, cycles, topological order; go iterative on big graphs.</p>
+<pre>
+def bfs(g, src):                                   # shortest path in edges
+    dist = {src: 0}; q = deque([src])
+    while q:
+        u = q.popleft()
+        for v in g[u]:
+            if v not in dist:
+                dist[v] = dist[u] + 1; q.append(v)
+    return dist
+
+def num_islands(grid):
+    R, C = len(grid), len(grid[0]); count = 0
+    def sink(r, c):                                # iterative DFS, marks in place
+        st = [(r, c)]; grid[r][c] = '0'
+        while st:
+            r, c = st.pop()
+            for nr, nc in ((r+1,c), (r-1,c), (r,c+1), (r,c-1)):
+                if 0 <= nr < R and 0 <= nc < C and grid[nr][nc] == '1':
+                    grid[nr][nc] = '0'; st.append((nr, nc))
+    for r in range(R):
+        for c in range(C):
+            if grid[r][c] == '1': count += 1; sink(r, c)
+    return count
+# max area of island: return size from sink; surrounded regions: flood from border first
+
+def rotting_oranges(grid):                         # multi-source BFS: all sources start at distance 0
+    R, C = len(grid), len(grid[0]); q = deque(); fresh = 0
+    for r in range(R):
+        for c in range(C):
+            if grid[r][c] == 2: q.append((r, c, 0))
+            elif grid[r][c] == 1: fresh += 1
+    t = 0
+    while q:
+        r, c, t = q.popleft()
+        for nr, nc in ((r+1,c), (r-1,c), (r,c+1), (r,c-1)):
+            if 0 <= nr < R and 0 <= nc < C and grid[nr][nc] == 1:
+                grid[nr][nc] = 2; fresh -= 1; q.append((nr, nc, t + 1))
+    return -1 if fresh else t
+# Walls and Gates / 01 Matrix: same, sources are gates/zeros, write distance into cell
+
+def zero_one_bfs(g, src, n):                       # edge weights 0 or 1: deque, push-front on 0
+    dist = [INF] * n; dist[src] = 0; dq = deque([src])
+    while dq:
+        u = dq.popleft()
+        for v, w in g[u]:
+            if dist[u] + w < dist[v]:
+                dist[v] = dist[u] + w
+                dq.appendleft(v) if w == 0 else dq.append(v)
+    return dist
+
+def is_bipartite(g, n):
+    color = [-1] * n
+    for s in range(n):
+        if color[s] != -1: continue
+        color[s] = 0; q = deque([s])
+        while q:
+            u = q.popleft()
+            for v in g[u]:
+                if color[v] == -1: color[v] = color[u] ^ 1; q.append(v)
+                elif color[v] == color[u]: return False
+    return True
+
+def clone_graph(node):
+    if not node: return None
+    copy = {node: Node(node.val)}; q = deque([node])
+    while q:
+        u = q.popleft()
+        for v in u.neighbors:
+            if v not in copy: copy[v] = Node(v.val); q.append(v)
+            copy[u].neighbors.append(copy[v])
+    return copy[node]
+
+def word_ladder(begin, end, words):                # BFS over words, neighbors via wildcard buckets
+    words = set(words)
+    if end not in words: return 0
+    L = len(begin); buckets = defaultdict(list)
+    for w in words:
+        for i in range(L): buckets[w[:i] + '*' + w[i+1:]].append(w)
+    q = deque([(begin, 1)]); seen = {begin}
+    while q:
+        w, d = q.popleft()
+        if w == end: return d
+        for i in range(L):
+            for nxt in buckets[w[:i] + '*' + w[i+1:]]:
+                if nxt not in seen: seen.add(nxt); q.append((nxt, d + 1))
+    return 0
+
+def shortest_path_binary_matrix(grid):             # 8-directional BFS, return path length in cells
+    n = len(grid)
+    if grid[0][0] or grid[n-1][n-1]: return -1
+    q = deque([(0, 0, 1)]); grid[0][0] = 1
+    while q:
+        r, c, d = q.popleft()
+        if r == c == n - 1: return d
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < n and 0 <= nc < n and grid[nr][nc] == 0:
+                    grid[nr][nc] = 1; q.append((nr, nc, d + 1))
+    return -1
+
+# pacific-atlantic: reverse flow, BFS from each ocean border inward, answer = intersection
+# bus routes / open the lock / minimum genetic mutation: BFS where "node" is a state, generate neighbors on the fly
+</pre>
+</div></details>
+
+<details class="card"><summary>Cycle detection, topological sort, Dijkstra, Bellman-Ford, MST <span class="tag hot">common</span></summary><div class="body">
+<pre>
+def course_schedule_ii(n, edges):                  # Kahn's on prerequisite pairs; returns [] if cycle. Full topo card in DS templates.
+    g = defaultdict(list); indeg = [0] * n
+    for a, b in edges: g[b].append(a); indeg[a] += 1     # b before a
+    q = deque(i for i in range(n) if indeg[i] == 0); order = []
+    while q:
+        u = q.popleft(); order.append(u)
+        for v in g[u]:
+            indeg[v] -= 1
+            if indeg[v] == 0: q.append(v)
+    return order if len(order) == n else []
+# lexicographically smallest order: use a min-heap instead of the deque
+# Alien Dictionary: build edges from first differing char of adjacent words; invalid if prefix case w2 < w1
+
+def has_cycle_directed(n, g):                      # colors: 0 white, 1 gray (on stack), 2 black
+    color = [0] * n
+    def dfs(u):
+        color[u] = 1
+        for v in g[u]:
+            if color[v] == 1: return True
+            if color[v] == 0 and dfs(v): return True
+        color[u] = 2; return False
+    return any(color[u] == 0 and dfs(u) for u in range(n))
+
+def has_cycle_undirected(n, g):                    # skip the edge back to parent; or DSU union returning False
+    seen = [False] * n
+    def dfs(u, parent):
+        seen[u] = True
+        for v in g[u]:
+            if not seen[v]:
+                if dfs(v, u): return True
+            elif v != parent: return True
+        return False
+    return any(not seen[u] and dfs(u, -1) for u in range(n))
+# Graph Valid Tree: n-1 edges and connected (or DSU with no cycle)
+
+def dijkstra(g, src, n):                           # non-negative weights, lazy deletion
+    dist = [INF] * n; dist[src] = 0; h = [(0, src)]
+    while h:
+        d, u = heapq.heappop(h)
+        if d > dist[u]: continue                   # stale entry
+        for v, w in g[u]:
+            nd = d + w
+            if nd < dist[v]:
+                dist[v] = nd; heapq.heappush(h, (nd, v))
+    return dist
+# Network Delay Time: max(dist) or -1; Path With Maximum Probability: max-heap on product;
+# Swim in Rising Water / Path With Minimum Effort: "minimax" Dijkstra, key = max(edge on path)
+# Cheapest Flights Within K Stops: Bellman-Ford K+1 rounds on a copy, or BFS with (stops) state
+
+def bellman_ford(n, edges, src):                   # handles negatives, detects negative cycle
+    dist = [INF] * n; dist[src] = 0
+    for _ in range(n - 1):
+        changed = False
+        for u, v, w in edges:
+            if dist[u] + w < dist[v]: dist[v] = dist[u] + w; changed = True
+        if not changed: break
+    if any(dist[u] + w < dist[v] for u, v, w in edges): return None   # negative cycle
+    return dist
+
+def floyd(n, edges):                               # all pairs, O(n^3), n <= ~300
+    d = [[INF] * n for _ in range(n)]
+    for i in range(n): d[i][i] = 0
+    for u, v, w in edges: d[u][v] = min(d[u][v], w)
+    for k in range(n):
+        for i in range(n):
+            if d[i][k] == INF: continue
+            for j in range(n):
+                if d[i][k] + d[k][j] < d[i][j]: d[i][j] = d[i][k] + d[k][j]
+    return d
+
+def kruskal(n, edges):                             # edges (w, u, v)
+    dsu = DSU(n); total = 0
+    for w, u, v in sorted(edges):
+        if dsu.union(u, v): total += w
+    return total
+def prim(g, n):                                    # g[u] = [(w, v)]
+    seen = [False] * n; h = [(0, 0)]; total = 0
+    while h:
+        w, u = heapq.heappop(h)
+        if seen[u]: continue
+        seen[u] = True; total += w
+        for nw, v in g[u]:
+            if not seen[v]: heapq.heappush(h, (nw, v))
+    return total
+# Min Cost to Connect All Points: Prim on implicit complete graph with Manhattan distance
+
+def reconstruct_itinerary(tickets):                # Eulerian path, Hierholzer, lexical order
+    g = defaultdict(list)
+    for a, b in sorted(tickets, reverse=True): g[a].append(b)   # pop() gives smallest
+    route = []
+    def dfs(u):
+        while g[u]: dfs(g[u].pop())
+        route.append(u)
+    dfs('JFK'); return route[::-1]
+
+def evaluate_division(equations, values, queries): # weighted graph, DFS/BFS for product along the path
+    g = defaultdict(dict)
+    for (a, b), v in zip(equations, values): g[a][b] = v; g[b][a] = 1 / v
+    def solve(a, b):
+        if a not in g or b not in g: return -1.0
+        st = [(a, 1.0)]; seen = {a}
+        while st:
+            u, acc = st.pop()
+            if u == b: return acc
+            for v, w in g[u].items():
+                if v not in seen: seen.add(v); st.append((v, acc * w))
+        return -1.0
+    return [solve(a, b) for a, b in queries]
+
+def tarjan_bridges(n, g):                          # Critical Connections
+    disc = [-1] * n; low = [0] * n; t = 0; out = []
+    def dfs(u, p):
+        nonlocal t
+        disc[u] = low[u] = t; t += 1
+        for v in g[u]:
+            if v == p: continue
+            if disc[v] == -1:
+                dfs(v, u); low[u] = min(low[u], low[v])
+                if low[v] > disc[u]: out.append((u, v))
+            else: low[u] = min(low[u], disc[v])
+    for u in range(n):
+        if disc[u] == -1: dfs(u, -1)
+    return out
+</pre>
+</div></details>
+
+<details class="card"><summary>Backtracking: subsets, permutations, combinations, N-Queens, word search, partition <span class="tag hot">common</span></summary><div class="body">
+<p><b>Skeleton:</b> choose, explore, un-choose. Prune early (sort + break when the remaining target is negative). Duplicates: sort and skip <code>if i &gt; start and nums[i] == nums[i-1]</code>.</p>
+<pre>
+def subsets(nums):
+    out, path = [], []
+    def bt(start):
+        out.append(path[:])
+        for i in range(start, len(nums)):
+            path.append(nums[i]); bt(i + 1); path.pop()
+    bt(0); return out
+# with duplicates: sort; skip if i > start and nums[i] == nums[i-1]
+# bitmask alternative: for mask in range(1 << n): [nums[i] for i in range(n) if mask >> i & 1]
+
+def permutations_(nums):
+    out, path, used = [], [], [False] * len(nums)
+    def bt():
+        if len(path) == len(nums): out.append(path[:]); return
+        for i, x in enumerate(nums):
+            if used[i]: continue
+            # duplicates: if i and nums[i] == nums[i-1] and not used[i-1]: continue  (sorted input)
+            used[i] = True; path.append(x); bt(); path.pop(); used[i] = False
+    bt(); return out
+
+def combination_sum(cands, target):                # unlimited reuse
+    cands.sort(); out, path = [], []
+    def bt(start, rem):
+        if rem == 0: out.append(path[:]); return
+        for i in range(start, len(cands)):
+            if cands[i] > rem: break               # prune
+            path.append(cands[i]); bt(i, rem - cands[i]); path.pop()   # i, not i+1: reuse allowed
+    bt(0, target); return out
+# Combination Sum II (each once, dupes in input): bt(i + 1), skip dupes with i > start check
+
+def generate_parentheses(n):
+    out = []
+    def bt(s, open_, close):
+        if len(s) == 2 * n: out.append(s); return
+        if open_ < n: bt(s + '(', open_ + 1, close)
+        if close < open_: bt(s + ')', open_, close + 1)
+    bt('', 0, 0); return out
+
+def letter_combinations(digits):
+    m = {'2':'abc','3':'def','4':'ghi','5':'jkl','6':'mno','7':'pqrs','8':'tuv','9':'wxyz'}
+    if not digits: return []
+    out = ['']
+    for d in digits: out = [p + c for p in out for c in m[d]]
+    return out
+
+def n_queens(n):
+    out = []; cols, d1, d2 = set(), set(), set(); board = []
+    def bt(r):
+        if r == n: out.append(['.' * c + 'Q' + '.' * (n - c - 1) for c in board]); return
+        for c in range(n):
+            if c in cols or r - c in d1 or r + c in d2: continue
+            cols.add(c); d1.add(r - c); d2.add(r + c); board.append(c)
+            bt(r + 1)
+            cols.discard(c); d1.discard(r - c); d2.discard(r + c); board.pop()
+    bt(0); return out
+
+def exist(board, word):                            # Word Search
+    R, C = len(board), len(board[0])
+    def dfs(r, c, i):
+        if i == len(word): return True
+        if not (0 <= r < R and 0 <= c < C) or board[r][c] != word[i]: return False
+        tmp, board[r][c] = board[r][c], '#'        # mark visited in place
+        found = any(dfs(r+dr, c+dc, i+1) for dr, dc in ((1,0),(-1,0),(0,1),(0,-1)))
+        board[r][c] = tmp
+        return found
+    return any(dfs(r, c, 0) for r in range(R) for c in range(C))
+
+def palindrome_partition(s):
+    out, path = [], []
+    def bt(start):
+        if start == len(s): out.append(path[:]); return
+        for end in range(start + 1, len(s) + 1):
+            piece = s[start:end]
+            if piece == piece[::-1]:
+                path.append(piece); bt(end); path.pop()
+    bt(0); return out
+
+def restore_ip(s):
+    out = []
+    def bt(start, parts):
+        if len(parts) == 4:
+            if start == len(s): out.append('.'.join(parts))
+            return
+        for L in (1, 2, 3):
+            seg = s[start:start + L]
+            if len(seg) < L or (seg[0] == '0' and L > 1) or int(seg) > 255: continue
+            bt(start + L, parts + [seg])
+    bt(0, []); return out
+
+def solve_sudoku(board):
+    rows = [set() for _ in range(9)]; cols = [set() for _ in range(9)]; boxes = [set() for _ in range(9)]; empties = []
+    for r in range(9):
+        for c in range(9):
+            v = board[r][c]
+            if v == '.': empties.append((r, c))
+            else: rows[r].add(v); cols[c].add(v); boxes[r//3*3 + c//3].add(v)
+    def bt(i):
+        if i == len(empties): return True
+        r, c = empties[i]; b = r//3*3 + c//3
+        for v in '123456789':
+            if v in rows[r] or v in cols[c] or v in boxes[b]: continue
+            board[r][c] = v; rows[r].add(v); cols[c].add(v); boxes[b].add(v)
+            if bt(i + 1): return True
+            board[r][c] = '.'; rows[r].discard(v); cols[c].discard(v); boxes[b].discard(v)
+        return False
+    bt(0)
+</pre>
+<p class="small">Complexity phrasing: subsets O(n * 2^n), permutations O(n * n!), N-Queens roughly O(n!). Always say "output-sensitive" when the answer itself is exponential.</p>
+</div></details>
+
+<details class="card"><summary>Dynamic programming: 1D, grid, knapsack, LIS, string DP, state machines, interval, bitmask <span class="tag hot">top priority</span></summary><div class="body">
+<p><b>Derivation recipe:</b> (1) define state = the smallest description of "where am I", (2) write the recurrence as a decision at this state, (3) base cases, (4) order of evaluation or memoize, (5) answer location, (6) space-optimize if only the previous row is used. Start with memoized recursion in the interview, then convert if asked.</p>
+<pre>
+# ---- 1D ----
+def climb_stairs(n):
+    a, b = 1, 1
+    for _ in range(n): a, b = b, a + b
+    return a
+def house_robber(nums):                            # rob[i] = max(rob[i-1], rob[i-2] + nums[i])
+    prev, cur = 0, 0
+    for x in nums: prev, cur = cur, max(cur, prev + x)
+    return cur
+# House Robber II (circle): max(rob(nums[1:]), rob(nums[:-1]))
+def decode_ways(s):
+    if not s or s[0] == '0': return 0
+    prev, cur = 1, 1                               # dp[i-2], dp[i-1]
+    for i in range(1, len(s)):
+        nxt = 0
+        if s[i] != '0': nxt += cur
+        if 10 <= int(s[i-1:i+1]) <= 26: nxt += prev
+        prev, cur = cur, nxt
+    return cur
+def word_break(s, words):
+    words = set(words); dp = [True] + [False] * len(s)   # dp[i]: s[:i] segmentable
+    for i in range(1, len(s) + 1):
+        dp[i] = any(dp[j] and s[j:i] in words for j in range(i))
+    return dp[-1]
+def coin_change_min(coins, amount):                # unbounded knapsack, min coins
+    dp = [0] + [INF] * amount
+    for a in range(1, amount + 1):
+        for c in coins:
+            if c <= a and dp[a - c] + 1 < dp[a]: dp[a] = dp[a - c] + 1
+    return -1 if dp[amount] == INF else dp[amount]
+def coin_change_ways(coins, amount):               # combinations (order does not matter): coins outer loop
+    dp = [1] + [0] * amount
+    for c in coins:
+        for a in range(c, amount + 1): dp[a] += dp[a - c]
+    return dp[amount]
+# permutations (order matters, Combination Sum IV): amount outer loop, coins inner
+
+# ---- grid ----
+def unique_paths(m, n):
+    row = [1] * n
+    for _ in range(1, m):
+        for c in range(1, n): row[c] += row[c - 1]
+    return row[-1]
+def min_path_sum(g):
+    R, C = len(g), len(g[0]); dp = [INF] * C; dp[0] = 0
+    for r in range(R):
+        dp[0] += g[r][0]
+        for c in range(1, C): dp[c] = min(dp[c], dp[c - 1]) + g[r][c]
+    return dp[-1]
+def maximal_square(m):
+    R, C = len(m), len(m[0]); dp = [[0] * (C + 1) for _ in range(R + 1)]; best = 0
+    for r in range(1, R + 1):
+        for c in range(1, C + 1):
+            if m[r-1][c-1] == '1':
+                dp[r][c] = 1 + min(dp[r-1][c], dp[r][c-1], dp[r-1][c-1]); best = max(best, dp[r][c])
+    return best * best
+
+# ---- 0/1 knapsack shape ----
+def can_partition(nums):                           # subset sum to total/2, iterate capacity downward
+    total = sum(nums)
+    if total % 2: return False
+    target = total // 2; dp = [True] + [False] * target
+    for x in nums:
+        for s in range(target, x - 1, -1): dp[s] = dp[s] or dp[s - x]
+    return dp[target]
+# bitset trick: bits = 1; for x in nums: bits |= bits << x; return bits >> target & 1
+def knapsack_01(weights, values, W):
+    dp = [0] * (W + 1)
+    for w, v in zip(weights, values):
+        for cap in range(W, w - 1, -1): dp[cap] = max(dp[cap], dp[cap - w] + v)
+    return dp[W]
+# Target Sum (+/-): count subsets with sum (total + target) / 2
+# Last Stone Weight II: minimize |S1 - S2| = total - 2 * best_subset_sum <= total // 2
+
+# ---- subsequence ----
+def lis(nums):                                     # O(n log n) patience: tails[i] = smallest tail of an inc subseq of length i+1
+    tails = []
+    for x in nums:
+        i = bisect.bisect_left(tails, x)           # bisect_right for non-decreasing
+        if i == len(tails): tails.append(x)
+        else: tails[i] = x
+    return len(tails)
+# O(n^2) version needed when reconstructing or with pair constraints (Russian Doll: sort by (w, -h), LIS on h)
+def lcs(a, b):
+    m, n = len(a), len(b); dp = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(m):
+        for j in range(n):
+            dp[i+1][j+1] = dp[i][j] + 1 if a[i] == b[j] else max(dp[i][j+1], dp[i+1][j])
+    return dp[m][n]
+def edit_distance(a, b):
+    m, n = len(a), len(b); prev = list(range(n + 1))
+    for i in range(1, m + 1):
+        cur = [i] + [0] * n
+        for j in range(1, n + 1):
+            if a[i-1] == b[j-1]: cur[j] = prev[j-1]
+            else: cur[j] = 1 + min(prev[j], cur[j-1], prev[j-1])   # delete, insert, replace
+        prev = cur
+    return prev[n]
+def longest_palindromic_subseq(s): return lcs(s, s[::-1])
+def count_palindromic_substrings(s):               # expand around center, O(n^2), O(1) space
+    n = len(s); res = 0
+    for center in range(2 * n - 1):
+        l, r = center // 2, (center + 1) // 2
+        while l >= 0 and r < n and s[l] == s[r]: res += 1; l -= 1; r += 1
+    return res
+def longest_palindromic_substring(s):
+    best = ''
+    for center in range(2 * len(s) - 1):
+        l, r = center // 2, (center + 1) // 2
+        while l >= 0 and r < len(s) and s[l] == s[r]: l -= 1; r += 1
+        if r - l - 1 > len(best): best = s[l+1:r]
+    return best
+def is_interleave(a, b, c):
+    if len(a) + len(b) != len(c): return False
+    @cache
+    def f(i, j):
+        if i == len(a) and j == len(b): return True
+        k = i + j
+        return (i < len(a) and a[i] == c[k] and f(i + 1, j)) or (j < len(b) and b[j] == c[k] and f(i, j + 1))
+    return f(0, 0)
+def regex_match(s, p):                             # '.' and '*'
+    @cache
+    def f(i, j):
+        if j == len(p): return i == len(s)
+        first = i < len(s) and p[j] in (s[i], '.')
+        if j + 1 < len(p) and p[j+1] == '*':
+            return f(i, j + 2) or (first and f(i + 1, j))
+        return first and f(i + 1, j + 1)
+    return f(0, 0)
+def distinct_subsequences(s, t):                   # ways t appears as subsequence of s
+    dp = [1] + [0] * len(t)
+    for ch in s:
+        for j in range(len(t) - 1, -1, -1):
+            if t[j] == ch: dp[j + 1] += dp[j]
+    return dp[len(t)]
+
+# ---- state machine (stocks) ----
+def max_profit_one(prices):
+    lo, best = INF, 0
+    for p in prices: lo = min(lo, p); best = max(best, p - lo)
+    return best
+def max_profit_unlimited(prices): return sum(max(0, b - a) for a, b in zip(prices, prices[1:]))
+def max_profit_cooldown(prices):
+    hold, sold, rest = -INF, 0, 0
+    for p in prices:
+        hold, sold, rest = max(hold, rest - p), hold + p, max(rest, sold)
+    return max(sold, rest)
+def max_profit_fee(prices, fee):
+    hold, free = -INF, 0
+    for p in prices: hold, free = max(hold, free - p), max(free, hold + p - fee)
+    return free
+def max_profit_k(k, prices):                       # k transactions
+    if k >= len(prices) // 2: return max_profit_unlimited(prices)
+    buy = [-INF] * (k + 1); sell = [0] * (k + 1)
+    for p in prices:
+        for t in range(1, k + 1):
+            buy[t] = max(buy[t], sell[t-1] - p); sell[t] = max(sell[t], buy[t] + p)
+    return sell[k]
+
+# ---- interval DP ----
+def burst_balloons(nums):
+    a = [1] + nums + [1]; n = len(a)
+    @cache
+    def f(l, r):                                   # max coins bursting strictly between l and r
+        return max((a[l] * a[k] * a[r] + f(l, k) + f(k, r) for k in range(l + 1, r)), default=0)
+    return f(0, n - 1)
+# Matrix chain, Minimum Cost to Cut a Stick, Palindrome Partitioning II (min cuts): same shape
+
+# ---- bitmask DP ----
+def tsp(dist):                                     # n <= 16
+    n = len(dist)
+    @cache
+    def f(mask, u):                                # min cost having visited mask, standing at u
+        if mask == (1 << n) - 1: return 0
+        return min(dist[u][v] + f(mask | 1 << v, v) for v in range(n) if not mask >> v & 1)
+    return f(1, 0)
+# Partition to K Equal Sum Subsets, Shortest Superstring, Minimum Incompatibility: same shape
+
+# ---- memo -> table -> rolling ----
+# 1. write recursive f(state) with @cache      2. table dp[state] filled in dependency order
+# 3. if dp[i] depends only on dp[i-1] (or row above), keep two rows / two variables
+</pre>
+<p class="small">Say the state count and transition cost: "O(states * transitions)". Common traps: forgetting the order of loops in coin change, iterating capacity upward in 0/1 knapsack (that makes it unbounded), off-by-one on the extra row/column of padding.</p>
+</div></details>
+
+<details class="card"><summary>Intervals: merge, insert, non-overlap, meeting rooms, sweep line, calendar <span class="tag hot">Salesforce favourite</span></summary><div class="body">
+<p><b>Fires on:</b> ranges, schedules, bookings, timelines. <b>Move 1:</b> sort by start. <b>Overlap test:</b> <code>a.start &lt;= b.end and b.start &lt;= a.end</code>. Decide closed vs half-open on touching intervals with the interviewer.</p>
+<pre>
+def merge(intervals):
+    intervals.sort(); out = []
+    for s, e in intervals:
+        if out and s <= out[-1][1]: out[-1][1] = max(out[-1][1], e)
+        else: out.append([s, e])
+    return out
+
+def insert(intervals, new):                        # intervals sorted, non-overlapping
+    out = []; i = 0; n = len(intervals); s, e = new
+    while i < n and intervals[i][1] < s: out.append(intervals[i]); i += 1
+    while i < n and intervals[i][0] <= e:
+        s = min(s, intervals[i][0]); e = max(e, intervals[i][1]); i += 1
+    out.append([s, e])
+    return out + intervals[i:]
+
+def erase_overlap(intervals):                      # min removals = n - max non-overlapping (greedy by end)
+    intervals.sort(key=lambda x: x[1]); keep = 0; end = -INF
+    for s, e in intervals:
+        if s >= end: keep += 1; end = e
+    return len(intervals) - keep
+
+def can_attend_all(intervals):
+    intervals.sort()
+    return all(a[1] <= b[0] for a, b in zip(intervals, intervals[1:]))
+
+def min_meeting_rooms(intervals):                  # min-heap of end times
+    intervals.sort(); h = []
+    for s, e in intervals:
+        if h and h[0] <= s: heapq.heapreplace(h, e)
+        else: heapq.heappush(h, e)
+    return len(h)
+# sweep line alternative: events (start, +1), (end, -1) sorted with ends before starts on ties; max running sum
+
+def max_overlap_time(intervals):                   # sweep line, returns (max concurrent, time)
+    events = []
+    for s, e in intervals: events.append((s, 1)); events.append((e, -1))
+    events.sort(key=lambda x: (x[0], x[1]))        # -1 before +1 at same time if intervals are half-open
+    cur = best = 0; at = None
+    for t, d in events:
+        cur += d
+        if cur > best: best, at = cur, t
+    return best, at
+
+def employee_free_time(schedules):
+    ivs = sorted((s, e) for emp in schedules for s, e in emp)
+    out = []; end = ivs[0][1]
+    for s, e in ivs[1:]:
+        if s > end: out.append([end, s])
+        end = max(end, e)
+    return out
+
+class MyCalendar:                                  # book if no overlap; O(log n) with sorted list, O(n) list scan acceptable
+    def __init__(self): self.starts = []; self.ends = []
+    def book(self, s, e):
+        i = bisect.bisect_right(self.starts, s)    # first event starting after s
+        if (i < len(self.starts) and self.starts[i] < e) or (i > 0 and self.ends[i-1] > s): return False
+        self.starts.insert(i, s); self.ends.insert(i, e); return True
+# MyCalendar II/III: difference map: diff[s] += 1, diff[e] -= 1, scan sorted keys, running count > k => reject
+
+def interval_intersection(A, B):                   # two sorted lists
+    i = j = 0; out = []
+    while i < len(A) and j < len(B):
+        lo = max(A[i][0], B[j][0]); hi = min(A[i][1], B[j][1])
+        if lo <= hi: out.append([lo, hi])
+        if A[i][1] < B[j][1]: i += 1
+        else: j += 1
+    return out
+
+def min_arrows(points):                            # greedy by end
+    points.sort(key=lambda p: p[1]); arrows = 0; end = -INF
+    for s, e in points:
+        if s > end: arrows += 1; end = e
+    return arrows
+</pre>
+</div></details>
+
+<details class="card"><summary>Greedy (with the exchange argument you must say)</summary><div class="body">
+<p>A greedy is safe when you can argue: "swapping any optimal choice for the greedy choice never makes the answer worse." If you cannot say that sentence, it is DP.</p>
+<pre>
+def can_jump(nums):
+    far = 0
+    for i, x in enumerate(nums):
+        if i > far: return False
+        far = max(far, i + x)
+    return True
+def jump_min(nums):                                # BFS-like levels
+    jumps = end = far = 0
+    for i in range(len(nums) - 1):
+        far = max(far, i + nums[i])
+        if i == end: jumps += 1; end = far
+    return jumps
+def gas_station(gas, cost):
+    if sum(gas) < sum(cost): return -1
+    start = tank = 0
+    for i in range(len(gas)):
+        tank += gas[i] - cost[i]
+        if tank < 0: start, tank = i + 1, 0
+    return start
+def task_scheduler(tasks, n):                      # idle slots formula
+    cnt = Counter(tasks).values(); mx = max(cnt); k = sum(1 for c in cnt if c == mx)
+    return max(len(tasks), (mx - 1) * (n + 1) + k)
+def partition_labels(s):
+    last = {c: i for i, c in enumerate(s)}; out = []; start = end = 0
+    for i, c in enumerate(s):
+        end = max(end, last[c])
+        if i == end: out.append(end - start + 1); start = i + 1
+    return out
+def candy(ratings):
+    n = len(ratings); c = [1] * n
+    for i in range(1, n):
+        if ratings[i] > ratings[i-1]: c[i] = c[i-1] + 1
+    for i in range(n - 2, -1, -1):
+        if ratings[i] > ratings[i+1]: c[i] = max(c[i], c[i+1] + 1)
+    return sum(c)
+def hand_of_straights(hand, k):
+    cnt = Counter(hand)
+    for x in sorted(cnt):
+        if cnt[x]:
+            need = cnt[x]
+            for y in range(x, x + k):
+                if cnt[y] < need: return False
+                cnt[y] -= need
+    return True
+def two_city_sched(costs):                         # sort by savings a - b
+    costs.sort(key=lambda c: c[0] - c[1]); n = len(costs) // 2
+    return sum(c[0] for c in costs[:n]) + sum(c[1] for c in costs[n:])
+def boats_to_save(people, limit):                  # sort + two pointers
+    people.sort(); l, r = 0, len(people) - 1; boats = 0
+    while l <= r:
+        if people[l] + people[r] <= limit: l += 1
+        r -= 1; boats += 1
+    return boats
+def min_cost_connect_sticks(sticks):               # Huffman-style: always merge two smallest
+    heapq.heapify(sticks); cost = 0
+    while len(sticks) > 1:
+        a, b = heapq.heappop(sticks), heapq.heappop(sticks); cost += a + b; heapq.heappush(sticks, a + b)
+    return cost
+</pre>
+</div></details>
+
+<details class="card"><summary>Strings: parsing with stacks, calculator, decode, KMP, Rabin-Karp, atoi, versions <span class="tag hot">Salesforce favourite</span></summary><div class="body">
+<pre>
+def valid_parentheses(s):
+    pair = {')': '(', ']': '[', '}': '{'}; st = []
+    for c in s:
+        if c in pair:
+            if not st or st.pop() != pair[c]: return False
+        else: st.append(c)
+    return not st
+
+def min_remove_to_valid(s):
+    s = list(s); st = []
+    for i, c in enumerate(s):
+        if c == '(': st.append(i)
+        elif c == ')':
+            if st: st.pop()
+            else: s[i] = ''
+    for i in st: s[i] = ''
+    return ''.join(s)
+
+def longest_valid_parentheses(s):
+    st = [-1]; best = 0
+    for i, c in enumerate(s):
+        if c == '(': st.append(i)
+        else:
+            st.pop()
+            if not st: st.append(i)
+            else: best = max(best, i - st[-1])
+    return best
+
+def decode_string(s):                              # "3[a2[c]]" -> "accaccacc"
+    st = []; cur = ''; num = 0
+    for c in s:
+        if c.isdigit(): num = num * 10 + int(c)
+        elif c == '[': st.append((cur, num)); cur, num = '', 0
+        elif c == ']': prev, k = st.pop(); cur = prev + cur * k
+        else: cur += c
+    return cur
+
+def eval_rpn(tokens):
+    st = []
+    for t in tokens:
+        if t in '+-*/':
+            b, a = st.pop(), st.pop()
+            st.append(a + b if t == '+' else a - b if t == '-' else a * b if t == '*' else int(a / b))
+        else: st.append(int(t))
+    return st[0]
+
+def basic_calculator_ii(s):                        # + - * / no parens
+    st = []; num = 0; op = '+'
+    for i, c in enumerate(s):
+        if c.isdigit(): num = num * 10 + int(c)
+        if c in '+-*/' or i == len(s) - 1:
+            if op == '+': st.append(num)
+            elif op == '-': st.append(-num)
+            elif op == '*': st.append(st.pop() * num)
+            else: st.append(int(st.pop() / num))
+            op, num = c, 0
+    return sum(st)
+
+def basic_calculator_i(s):                         # + - and parens
+    st = []; res = 0; num = 0; sign = 1
+    for c in s:
+        if c.isdigit(): num = num * 10 + int(c)
+        elif c in '+-': res += sign * num; num = 0; sign = 1 if c == '+' else -1
+        elif c == '(': st.append((res, sign)); res, sign = 0, 1
+        elif c == ')':
+            res += sign * num; num = 0
+            prev, psign = st.pop(); res = prev + psign * res
+    return res + sign * num
+# full calculator (+ - * / parens): recursive descent, or convert to RPN with precedence (shunting-yard)
+
+def simplify_path(path):
+    st = []
+    for part in path.split('/'):
+        if part == '..':
+            if st: st.pop()
+        elif part and part != '.': st.append(part)
+    return '/' + '/'.join(st)
+
+def my_atoi(s):
+    s = s.lstrip(); i = 0; sign = 1; n = 0
+    if i < len(s) and s[i] in '+-': sign = -1 if s[i] == '-' else 1; i += 1
+    while i < len(s) and s[i].isdigit(): n = n * 10 + int(s[i]); i += 1
+    return max(-2**31, min(2**31 - 1, sign * n))
+
+def compare_version(v1, v2):
+    a = [int(x) for x in v1.split('.')]; b = [int(x) for x in v2.split('.')]
+    n = max(len(a), len(b)); a += [0] * (n - len(a)); b += [0] * (n - len(b))
+    return (a > b) - (a < b)
+
+def string_compress(chars):                        # "aabccc" -> "a2bc3", in place, return length
+    w = 0; i = 0
+    while i < len(chars):
+        j = i
+        while j < len(chars) and chars[j] == chars[i]: j += 1
+        chars[w] = chars[i]; w += 1
+        if j - i > 1:
+            for d in str(j - i): chars[w] = d; w += 1
+        i = j
+    return w
+
+def group_anagrams(strs):
+    g = defaultdict(list)
+    for s in strs:
+        key = [0] * 26
+        for c in s: key[ord(c) - 97] += 1
+        g[tuple(key)].append(s)                    # or ''.join(sorted(s)) as key
+    return list(g.values())
+
+def kmp_failure(p):                                # lps[i] = longest proper prefix of p[:i+1] that is also suffix
+    lps = [0] * len(p); k = 0
+    for i in range(1, len(p)):
+        while k and p[i] != p[k]: k = lps[k - 1]
+        if p[i] == p[k]: k += 1
+        lps[i] = k
+    return lps
+def kmp_search(text, p):
+    lps = kmp_failure(p); k = 0; out = []
+    for i, c in enumerate(text):
+        while k and c != p[k]: k = lps[k - 1]
+        if c == p[k]: k += 1
+        if k == len(p): out.append(i - k + 1); k = lps[k - 1]
+    return out
+# shortest palindrome / repeated substring pattern: lps of (s + '#' + s[::-1]) / n % (n - lps[-1]) == 0
+
+def rabin_karp(text, p, base=256, mod=10**9 + 7):
+    n, m = len(text), len(p)
+    if m > n: return []
+    hp = ht = 0; high = pow(base, m - 1, mod); out = []
+    for i in range(m):
+        hp = (hp * base + ord(p[i])) % mod; ht = (ht * base + ord(text[i])) % mod
+    for i in range(n - m + 1):
+        if hp == ht and text[i:i + m] == p: out.append(i)
+        if i + m < n: ht = ((ht - ord(text[i]) * high) * base + ord(text[i + m])) % mod
+    return out
+
+def encode(strs): return ''.join(f'{len(s)}#{s}' for s in strs)   # Encode and Decode Strings
+def decode(s):
+    out = []; i = 0
+    while i < len(s):
+        j = s.index('#', i); L = int(s[i:j]); out.append(s[j+1:j+1+L]); i = j + 1 + L
+    return out
+
+def is_isomorphic(s, t): return len(set(zip(s, t))) == len(set(s)) == len(set(t))
+def word_pattern(pattern, s):
+    w = s.split()
+    return len(pattern) == len(w) and len(set(zip(pattern, w))) == len(set(pattern)) == len(set(w))
+
+def roman_to_int(s):
+    v = {'I':1,'V':5,'X':10,'L':50,'C':100,'D':500,'M':1000}; res = 0
+    for i, c in enumerate(s):
+        if i + 1 < len(s) and v[c] < v[s[i+1]]: res -= v[c]
+        else: res += v[c]
+    return res
+def int_to_roman(n):
+    vals = [(1000,'M'),(900,'CM'),(500,'D'),(400,'CD'),(100,'C'),(90,'XC'),(50,'L'),(40,'XL'),(10,'X'),(9,'IX'),(5,'V'),(4,'IV'),(1,'I')]
+    out = []
+    for v, sym in vals:
+        while n >= v: out.append(sym); n -= v
+    return ''.join(out)
+
+def multiply_strings(a, b):
+    res = [0] * (len(a) + len(b))
+    for i in range(len(a) - 1, -1, -1):
+        for j in range(len(b) - 1, -1, -1):
+            res[i + j + 1] += int(a[i]) * int(b[j])
+            res[i + j] += res[i + j + 1] // 10; res[i + j + 1] %= 10
+    s = ''.join(map(str, res)).lstrip('0'); return s or '0'
+
+def text_justify(words, maxWidth):
+    out, line, length = [], [], 0
+    for w in words:
+        if length + len(w) + len(line) > maxWidth:
+            for i in range(maxWidth - length):
+                line[i % (len(line) - 1 or 1)] += ' '
+            out.append(''.join(line)); line, length = [], 0
+        line.append(w); length += len(w)
+    out.append(' '.join(line).ljust(maxWidth)); return out
+</pre>
+</div></details>
+
+<details class="card"><summary>Bit manipulation and math</summary><div class="body">
+<pre>
+def single_number(nums): return reduce(lambda a, b: a ^ b, nums)
+def single_number_iii(nums):                       # two singles: split by a differing bit
+    x = reduce(lambda a, b: a ^ b, nums); low = x & -x; a = 0
+    for v in nums:
+        if v & low: a ^= v
+    return [a, x ^ a]
+def count_bits(n):
+    dp = [0] * (n + 1)
+    for i in range(1, n + 1): dp[i] = dp[i >> 1] + (i & 1)
+    return dp
+def reverse_bits(x):
+    r = 0
+    for _ in range(32): r = (r << 1) | (x & 1); x >>= 1
+    return r
+def missing_number(nums): return len(nums) * (len(nums) + 1) // 2 - sum(nums)   # or xor 0..n with all
+def hamming(a, b): return (a ^ b).bit_count()
+def add_without_plus(a, b):                        # 32-bit two's complement in Python
+    mask = 0xFFFFFFFF
+    while b:
+        a, b = (a ^ b) & mask, ((a & b) << 1) & mask
+    return a if a <= 0x7FFFFFFF else ~(a ^ mask)
+
+def fast_pow(x, n):                                # Pow(x, n) with negative n
+    if n < 0: x, n = 1 / x, -n
+    res = 1
+    while n:
+        if n & 1: res *= x
+        x *= x; n >>= 1
+    return res
+def my_sqrt(x):                                    # floor sqrt by binary search (or math.isqrt)
+    lo, hi = 0, x
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if mid * mid <= x: lo = mid
+        else: hi = mid - 1
+    return lo
+def sieve(n):
+    is_p = [True] * (n + 1); is_p[0:2] = [False, False]
+    for i in range(2, math.isqrt(n) + 1):
+        if is_p[i]: is_p[i*i::i] = [False] * len(range(i*i, n + 1, i))
+    return [i for i, p in enumerate(is_p) if p]
+def gcd(a, b):
+    while b: a, b = b, a % b
+    return a
+def is_happy(n):
+    seen = set()
+    while n != 1 and n not in seen:
+        seen.add(n); n = sum(int(d) ** 2 for d in str(n))
+    return n == 1
+def divide(a, b):                                  # without / operator, truncate toward zero
+    neg = (a < 0) != (b < 0); a, b = abs(a), abs(b); q = 0
+    while a >= b:
+        tmp, mult = b, 1
+        while a >= tmp << 1: tmp <<= 1; mult <<= 1
+        a -= tmp; q += mult
+    q = -q if neg else q
+    return max(-2**31, min(2**31 - 1, q))
+def excel_column(n):
+    out = []
+    while n: n, r = divmod(n - 1, 26); out.append(chr(65 + r))
+    return ''.join(reversed(out))
+def reservoir_sample(stream, k):                   # uniform k from unknown length stream
+    res = []
+    for i, x in enumerate(stream):
+        if i < k: res.append(x)
+        else:
+            j = random.randint(0, i)
+            if j < k: res[j] = x
+    return res
+class RandomPickWeight:                            # prefix sums + bisect
+    def __init__(self, w): self.pre = list(accumulate(w))
+    def pickIndex(self): return bisect.bisect_left(self.pre, random.randint(1, self.pre[-1]))
+def shuffle(arr):                                  # Fisher-Yates
+    for i in range(len(arr) - 1, 0, -1):
+        j = random.randint(0, i); arr[i], arr[j] = arr[j], arr[i]
+</pre>
+</div></details>
+
+<details class="card"><summary>Iterators, streams and "design a class" patterns</summary><div class="body">
+<pre>
+class PeekingIterator:
+    def __init__(self, it): self.it = it; self.buf = next(it, None)
+    def peek(self): return self.buf
+    def next(self): v = self.buf; self.buf = next(self.it, None); return v
+    def hasNext(self): return self.buf is not None
+
+class NestedIterator:                              # lazy: stack of reversed items, unwrap lists on demand
+    def __init__(self, nested): self.st = nested[::-1]
+    def hasNext(self):
+        while self.st and not self.st[-1].isInteger():
+            self.st.extend(self.st.pop().getList()[::-1])   # expand top list in place
+        return bool(self.st)
+    def next(self): return self.st.pop().getInteger()
+    # eager version: flatten into a deque in __init__ with a recursive helper; say laziness is the follow-up
+
+class ZigzagIterator:                              # round-robin over K lists
+    def __init__(self, *lists): self.q = deque((iter(l), len(l)) for l in lists if l)
+    def next(self):
+        it, n = self.q.popleft(); v = next(it)
+        if n > 1: self.q.append((it, n - 1))
+        return v
+    def hasNext(self): return bool(self.q)
+
+class BrowserHistory:                              # two stacks or list + pointer
+    def __init__(self, home): self.h = [home]; self.i = 0
+    def visit(self, url): del self.h[self.i + 1:]; self.h.append(url); self.i += 1
+    def back(self, steps): self.i = max(0, self.i - steps); return self.h[self.i]
+    def forward(self, steps): self.i = min(len(self.h) - 1, self.i + steps); return self.h[self.i]
+
+class Leaderboard:
+    def __init__(self): self.s = defaultdict(int)
+    def addScore(self, pid, score): self.s[pid] += score
+    def top(self, k): return sum(heapq.nlargest(k, self.s.values()))
+    def reset(self, pid): self.s.pop(pid, None)
+
+class Twitter:                                     # feed: K-way merge of followees' recent tweets
+    def __init__(self): self.t = 0; self.tweets = defaultdict(list); self.follows = defaultdict(set)
+    def postTweet(self, uid, tid): self.tweets[uid].append((self.t, tid)); self.t -= 1   # decreasing => min-heap gives newest
+    def getNewsFeed(self, uid):
+        h = []
+        for u in self.follows[uid] | {uid}:
+            for item in self.tweets[u][-10:]: h.append(item)
+        return [tid for _, tid in heapq.nsmallest(10, h)]
+    def follow(self, a, b): self.follows[a].add(b)
+    def unfollow(self, a, b): self.follows[a].discard(b)
+
+class TicTacToe:                                   # O(1) move: row/col/diag counters, +1 / -1 per player
+    def __init__(self, n): self.n = n; self.rows = [0]*n; self.cols = [0]*n; self.d = 0; self.ad = 0
+    def move(self, r, c, player):
+        v = 1 if player == 1 else -1
+        self.rows[r] += v; self.cols[c] += v
+        if r == c: self.d += v
+        if r + c == self.n - 1: self.ad += v
+        if self.n in map(abs, (self.rows[r], self.cols[c], self.d, self.ad)): return player
+        return 0
+
+class SnakeGame:
+    def __init__(self, w, h, food):
+        self.w, self.h, self.food = w, h, deque(food); self.snake = deque([(0, 0)]); self.body = {(0, 0)}; self.score = 0
+    def move(self, d):
+        r, c = self.snake[0]; dr, dc = {'U':(-1,0),'D':(1,0),'L':(0,-1),'R':(0,1)}[d]; nr, nc = r + dr, c + dc
+        if not (0 <= nr < self.h and 0 <= nc < self.w): return -1
+        tail = self.snake[-1]
+        if self.food and [nr, nc] == self.food[0]: self.food.popleft(); self.score += 1
+        else: self.snake.pop(); self.body.discard(tail)
+        if (nr, nc) in self.body: return -1
+        self.snake.appendleft((nr, nc)); self.body.add((nr, nc)); return self.score
+
+class FileSystem:                                  # in-memory: trie of dirs with content on files
+    def __init__(self): self.root = {}
+    def _walk(self, path):
+        node = self.root
+        for p in path.strip('/').split('/'):
+            if p: node = node.setdefault(p, {})
+        return node
+    def ls(self, path):
+        node = self._walk(path)
+        return [path.rsplit('/', 1)[-1]] if isinstance(node, str) else sorted(node)
+    def mkdir(self, path): self._walk(path)
+    def addContentToFile(self, path, content):
+        d, name = path.rsplit('/', 1); node = self._walk(d); node[name] = node.get(name, '') + content
+    def readContentFromFile(self, path):
+        d, name = path.rsplit('/', 1); return self._walk(d)[name]
+</pre>
+</div></details>
+</section>

@@ -1,0 +1,302 @@
+
+<style>
+.mine{border:2px solid var(--gold); background:linear-gradient(180deg, var(--gold-soft) 0, var(--paper) 90px)}
+.mine>summary{font-size:1.05rem}
+.mine .why{background:var(--paper); border:1px dashed var(--gold); border-radius:8px; padding:8px 12px; margin:6px 0}
+</style>
+<section id="mine">
+<h2>8. My actual Salesforce loop (MTS / SDE-2, Sept 2026): the real problems, solved optimally</h2>
+<div class="card static" style="border-color:var(--gold)">
+<p><b>Outcome:</b> rejected after round 4, before the HM round. 10 problems across 6 rounds: a 2-problem HackerRank OA, 2 virtual rounds, 2 face-to-face rounds (9 DSA + 1 SQL), HM not reached. These are the exact problems, each with the optimal solution, the one-line reason it is optimal, and what the interviewer was probing. Re-derive every one of these cold: the same shapes come back in every Salesforce loop.</p>
+<div class="tbl"><table>
+<tr><th>Round</th><th>Problems</th><th>Pattern</th></tr>
+<tr><td>OA (HackerRank)</td><td>1. Alphabet-wheel decryption &nbsp; 2. "01" &rarr; "10" parade simulation</td><td>Modular arithmetic; counting insight instead of simulation</td></tr>
+<tr><td>Round 1 (virtual)</td><td>3. Sort a string by decreasing character frequency</td><td>Counter + sort, or bucket by frequency</td></tr>
+<tr><td>Round 2 (virtual)</td><td>4. Remove duplicate letters, lexicographically smallest &nbsp; 5. Sum of minimums of every subarray (+ follow-up: sum of all subarray sums)</td><td>Greedy monotonic stack; contribution technique with prev/next smaller</td></tr>
+<tr><td>Round 3 (face to face)</td><td>6. Longest palindrome from two strings &nbsp; 7. Distance of every node to the nearest cycle node in a directed graph &nbsp; 8. SQL: exam attempts per student</td><td>Interval DP; cycle detection + multi-source BFS on reversed graph; JOIN + GROUP BY</td></tr>
+<tr><td>Round 4 (face to face)</td><td>9. Equalize task durations with removals, min operations &nbsp; 10. Build binary tree from inorder + level order</td><td>Sort + prefix sums + exchange argument; tree construction by filtering</td></tr>
+</table></div>
+</div>
+
+<details class="card mine" open><summary>OA-1 &middot; Alphabet-wheel decryption (shift back by K with wrap) <span class="tag ok">O(n)</span></summary><div class="body">
+<p><b>Problem:</b> uppercase string, replace every char by the letter K positions counterclockwise (backward) on a wheel A..Z that wraps. Length and K up to 10^5.</p>
+<div class="why"><b>Trap:</b> K up to 10^5 but the wheel has 26 positions. Reduce K mod 26 once; never loop K times per character (that is O(nK) = 10^10). Map to 0..25, subtract, mod 26, map back. Python's % is non-negative so no special case for wrapping under A.</div>
+<pre>
+def decrypt(encrypted: str, k: int) -> str:
+    k %= 26                                                    # the wheel has 26 stops
+    return ''.join(chr((ord(c) - 65 - k) % 26 + 65) for c in encrypted)
+
+# "VTAOG", k=2 -> "TRYME"  (V->T, T->R, A->Y wraps, O->M, G->E)
+# Edge: k % 26 == 0 returns the input unchanged; empty string returns ''.
+# Say: O(n) time, O(n) for the output string, O(1) extra.
+</pre>
+</div></details>
+
+<details class="card mine" open><summary>OA-2 &middot; Parade: every "01" becomes "10" each second, how many seconds until stable <span class="tag ok">O(n), no simulation</span></summary><div class="body">
+<p><b>Problem:</b> binary string, 0 = red, 1 = blue. Each second all "01" substrings flip to "10" simultaneously. Return the number of seconds until no "01" remains. Example 0010101 &rarr; 4 seconds. (LeetCode 2380 "Time Needed to Rearrange a Binary String".)</p>
+<div class="why"><b>Insight:</b> simulation is O(n^2) and times out at 10^5. Think about each '1' individually: it has to move left past every '0' that is before it, one step per second, so on its own it needs <code>zeros_before</code> seconds. But it cannot overtake the '1' ahead of it: if the previous '1' finishes at time t, this one finishes no earlier than t + 1. So <code>t = max(t + 1, zeros_before)</code>, and the answer is the finishing time of the last '1'. A '1' with no zeros before it never moves.</div>
+<pre>
+def seconds_until_stable(color: str) -> int:
+    zeros = t = 0
+    for c in color:
+        if c == '0':
+            zeros += 1
+        elif zeros:                        # a '1' that has zeros to cross
+            t = max(t + 1, zeros)
+    return t
+
+# 0010101: zeros=2 at first '1' -> t=2; zeros=3 -> t=max(3,3)=3; zeros=4 -> t=max(4,4)=4.  Answer 4.
+# Edges: all zeros or all ones -> 0; "1110" -> 0; "0111" -> 3 (1 sec each, chained by the +1 rule).
+# Say: O(n) time, O(1) space. Then offer the brute-force simulation as the sanity check you would test against.
+</pre>
+</div></details>
+
+<details class="card mine" open><summary>R1 &middot; Sort a string in decreasing order of character frequency <span class="tag ok">O(n) bucket / O(n log k) sort</span></summary><div class="body">
+<p><b>Problem:</b> "tree" &rarr; "eert" (or "eetr"). Ties in any order unless they specify.</p>
+<div class="why"><b>Insight:</b> it is a histogram question, not a string question. Count once, then order the distinct characters by count. Sorting the distinct keys is O(k log k) with k &lt;= 26 for letters, effectively constant. If they push for "no sort": bucket by frequency (bucket index = count, max count = n) and walk buckets from n down to 1, which is O(n).</div>
+<pre>
+def frequency_sort(s: str) -> str:
+    cnt = Counter(s)
+    return ''.join(ch * c for ch, c in cnt.most_common())   # most_common sorts by count desc
+
+# tie-break deterministic (count desc, then char asc):
+def frequency_sort_stable(s: str) -> str:
+    cnt = Counter(s)
+    return ''.join(ch * c for ch, c in sorted(cnt.items(), key=lambda kv: (-kv[1], kv[0])))
+
+# O(n) bucket version, no comparison sort:
+def frequency_sort_bucket(s: str) -> str:
+    cnt = Counter(s); buckets = [[] for _ in range(len(s) + 1)]
+    for ch, c in cnt.items(): buckets[c].append(ch)
+    return ''.join(ch * c for c in range(len(s), 0, -1) for ch in buckets[c])
+
+# Say: O(n + k log k) with k distinct chars; bucket version O(n). Space O(k) (or O(n) for buckets).
+# Probes: stability of ties, unicode alphabet (k is no longer 26), streaming input (heap of counts).
+</pre>
+</div></details>
+
+<details class="card mine" open><summary>R2-1 &middot; Remove duplicate letters, each letter once, lexicographically smallest result <span class="tag ok">monotonic stack O(n)</span></summary><div class="body">
+<p><b>Problem:</b> "bcabc" &rarr; "abc"; "cbacdcbc" &rarr; "acdb". Keep relative order, every distinct letter exactly once, smallest possible string. (LeetCode 316 / 1081.)</p>
+<div class="why"><b>Insight:</b> this is a greedy monotonic stack with one extra permission check. Build the answer left to right in a stack. When a new char c arrives that is smaller than the stack top, you would like to pop the top to make the prefix smaller, but you may only pop it if it appears again later (otherwise you lose it forever). So keep <code>last[ch]</code> = last index of each char, and a <code>used</code> set so a char already in the stack is skipped. Each char is pushed and popped at most once: O(n).</div>
+<pre>
+def remove_duplicate_letters(s: str) -> str:
+    last = {ch: i for i, ch in enumerate(s)}      # last occurrence of each char
+    st, used = [], set()
+    for i, ch in enumerate(s):
+        if ch in used: continue                    # already placed, and it is in its best spot
+        while st and st[-1] > ch and last[st[-1]] > i:   # top is bigger AND will appear again
+            used.discard(st.pop())
+        st.append(ch); used.add(ch)
+    return ''.join(st)
+
+# "cbacdcbc": c | b<c and c appears later -> pop c, push b | a<b, b later -> pop b, push a | c | d | c used, skip
+#            | b<d but d never again -> keep d, push b | c used. Result "acdb".
+# Say: O(n) time, O(k) space with k distinct chars. Invariant: the stack is the lexicographically smallest
+# valid answer for the prefix seen so far, given what still lies ahead.
+# Probes: why not just sort (order must be preserved), "Remove K Digits" (same stack without the last[] check),
+# "Smallest Subsequence of Distinct Characters" (identical problem).
+</pre>
+</div></details>
+
+<details class="card mine" open><summary>R2-2 &middot; Sum of minimums of every contiguous subarray <span class="tag ok">monotonic stack + contribution, O(n)</span></summary><div class="body">
+<p><b>Problem:</b> [3,1,2,4] &rarr; subarrays [3],[1],[2],[4],[3,1],[1,2],[2,4],[3,1,2],[1,2,4],[3,1,2,4] with mins 3,1,2,4,1,1,2,1,1,1 = 17. n up to 3*10^4, answer mod 10^9+7. (LeetCode 907.)</p>
+<div class="why"><b>Insight: flip the question.</b> Instead of "what is the min of each subarray" (O(n^2) subarrays), ask "for how many subarrays is arr[i] the minimum?" That is left[i] * right[i], where left[i] = number of ways to extend leftward before hitting a smaller element, right[i] = same to the right. Answer = sum arr[i] * left[i] * right[i]. Previous-smaller and next-smaller come from a monotonic stack in O(n). <b>Duplicates:</b> use strict on one side and non-strict on the other, so a subarray with two equal minimums is counted once.</div>
+<pre>
+def sum_subarray_mins(arr: list[int]) -> int:
+    MOD = 10**9 + 7; n = len(arr)
+    left = [0] * n; right = [0] * n; st = []
+    for i in range(n):                             # previous strictly smaller
+        while st and arr[st[-1]] > arr[i]: st.pop()
+        left[i] = i - (st[-1] if st else -1)
+        st.append(i)
+    st = []
+    for i in range(n - 1, -1, -1):                 # next smaller OR EQUAL (non-strict) to avoid double count
+        while st and arr[st[-1]] >= arr[i]: st.pop()
+        right[i] = (st[-1] if st else n) - i
+        st.append(i)
+    return sum(a * l * r for a, l, r in zip(arr, left, right)) % MOD
+
+# [3,1,2,4]: left [1,2,1,1], right [1,3,2,1] -> 3*1*1 + 1*2*3 + 2*1*2 + 4*1*1 = 3+6+4+4 = 17.
+# Say: O(n) time, O(n) space. Probes: duplicates (the strict/non-strict pair), sum of subarray MAXIMUMS
+# (flip the comparisons), sum of (max - min) over all subarrays (do both, subtract).
+</pre>
+<div class="why"><b>Follow-up they asked: sum of ALL subarray sums.</b> Same contribution idea with no stack at all: arr[i] appears in (i + 1) * (n - i) subarrays (choose any start &lt;= i, any end &gt;= i).</div>
+<pre>
+def sum_all_subarray_sums(arr: list[int]) -> int:
+    n = len(arr)
+    return sum(x * (i + 1) * (n - i) for i, x in enumerate(arr))
+# [1,2,3] -> 1*1*3 + 2*2*2 + 3*3*1 = 3 + 8 + 3 = 20. Check: 1+2+3+3+5+6 = 20. O(n), O(1).
+</pre>
+</div></details>
+
+<details class="card mine" open><summary>R3-1 &middot; Longest palindrome you can build from two strings <span class="tag ok">interval DP O((m+n)^2)</span></summary><div class="body">
+<p><b>Problem as asked:</b> two strings, build the maximum-length palindrome and return its length. <b>Clarify which version</b> before coding; both are below.</p>
+<div class="why"><b>Version A (the LeetCode-hard one, 1771):</b> pick a non-empty subsequence from word1 and a non-empty subsequence from word2, concatenate, must be a palindrome. Trick: concatenate s = word1 + word2 and run the standard longest-palindromic-subsequence interval DP, but only accept dp[i][j] as an answer when s[i] == s[j] with i inside word1 and j inside word2. That single check enforces "uses both strings" because the outermost matched pair straddles the boundary.</div>
+<pre>
+def longest_palindrome_two_strings(word1: str, word2: str) -> int:
+    s = word1 + word2; n = len(s); m = len(word1); best = 0
+    dp = [[0] * n for _ in range(n)]           # dp[i][j] = LPS length inside s[i..j]
+    for i in range(n - 1, -1, -1):
+        dp[i][i] = 1
+        for j in range(i + 1, n):
+            if s[i] == s[j]:
+                dp[i][j] = dp[i + 1][j - 1] + 2
+                if i < m <= j:                 # outer pair straddles word1 | word2
+                    best = max(best, dp[i][j])
+            else:
+                dp[i][j] = max(dp[i + 1][j], dp[i][j - 1])
+    return best                                # 0 if impossible
+
+# "cacb", "cbba" -> 5 ("abcba"). Space can drop to O(n) with two rows if asked.
+# Say: states (i, j) = O(n^2), O(1) transition -> O(n^2) time and space.
+</pre>
+<div class="why"><b>Version B (the easy one):</b> you may rearrange the characters of both strings freely. Then it is just counting: every pair of a letter contributes 2, plus one odd letter in the middle.</div>
+<pre>
+def longest_palindrome_from_chars(a: str, b: str) -> int:
+    cnt = Counter(a + b); length = 0; odd = False
+    for c in cnt.values():
+        length += c // 2 * 2
+        odd = odd or c % 2 == 1
+    return length + odd                       # O(m + n)
+</pre>
+</div></details>
+
+<details class="card mine" open><summary>R3-2 &middot; Directed graph with cycles: distance of every node to the nearest node on a cycle <span class="tag ok">O(V + E)</span></summary><div class="body">
+<p><b>Problem:</b> directed graph that contains cycles. For each node return its distance (following edges) to the closest node that is part of a cycle. Cycle nodes get 0.</p>
+<div class="why"><b>Two-step insight:</b> (1) find exactly which nodes lie on a cycle; (2) the distance "from u to the nearest cycle node along edges" is a shortest path into a set of targets, so run one multi-source BFS from all cycle nodes on the <b>reversed</b> graph. Reversing turns "u reaches target" into "target reaches u", and BFS from many sources at distance 0 gives the nearest one for free.</div>
+<div class="why"><b>Most likely version (each node has exactly one outgoing edge, a "functional graph", like LeetCode 2360):</b> peel nodes with in-degree 0 repeatedly (Kahn's). Whatever survives is on a cycle. Then every peeled node's distance is 1 + distance of the node it points to.</div>
+<pre>
+def dist_to_cycle_functional(nxt: list[int]) -> list[int]:
+    # nxt[i] = the single node i points to (every node has one out-edge)
+    n = len(nxt); indeg = [0] * n
+    for v in nxt: indeg[v] += 1
+    q = deque(i for i in range(n) if indeg[i] == 0); on_cycle = [True] * n
+    while q:                                   # peel: anything peeled is not on a cycle
+        u = q.popleft(); on_cycle[u] = False
+        indeg[nxt[u]] -= 1
+        if indeg[nxt[u]] == 0: q.append(nxt[u])
+    dist = [0 if on_cycle[i] else -1 for i in range(n)]
+    for i in range(n):                         # walk each tree node down to a known distance
+        if dist[i] != -1: continue
+        path, u = [], i
+        while dist[u] == -1: path.append(u); u = nxt[u]
+        d = dist[u]
+        for node in reversed(path): d += 1; dist[node] = d
+    return dist
+# O(n): every node is peeled once and assigned once.
+</pre>
+<div class="why"><b>General directed graph (any out-degree):</b> cycle nodes = members of a strongly connected component of size &gt; 1, or a node with a self-loop. Tarjan gives SCCs in O(V + E). Then reversed multi-source BFS. Nodes that cannot reach any cycle get -1.</div>
+<pre>
+def dist_to_nearest_cycle_node(n: int, edges: list[tuple[int, int]]) -> list[int]:
+    g = [[] for _ in range(n)]; rg = [[] for _ in range(n)]
+    for u, v in edges: g[u].append(v); rg[v].append(u)
+
+    # 1) Tarjan SCC -> which nodes are on a cycle
+    idx = [-1] * n; low = [0] * n; on_stack = [False] * n; st = []; t = 0
+    on_cycle = [False] * n
+    def dfs(u):
+        nonlocal t
+        idx[u] = low[u] = t; t += 1; st.append(u); on_stack[u] = True
+        for v in g[u]:
+            if idx[v] == -1: dfs(v); low[u] = min(low[u], low[v])
+            elif on_stack[v]: low[u] = min(low[u], idx[v])
+        if low[u] == idx[u]:                   # u is the root of an SCC
+            comp = []
+            while True:
+                v = st.pop(); on_stack[v] = False; comp.append(v)
+                if v == u: break
+            if len(comp) > 1 or u in g[u]:     # real cycle (or self-loop)
+                for v in comp: on_cycle[v] = True
+    for u in range(n):
+        if idx[u] == -1: dfs(u)
+
+    # 2) multi-source BFS from cycle nodes over REVERSED edges
+    dist = [-1] * n; q = deque()
+    for u in range(n):
+        if on_cycle[u]: dist[u] = 0; q.append(u)
+    while q:
+        v = q.popleft()
+        for u in rg[v]:                        # u -> v in the original graph
+            if dist[u] == -1: dist[u] = dist[v] + 1; q.append(u)
+    return dist
+# O(V + E) time and space. Set sys.setrecursionlimit for Tarjan, or mention the iterative version.
+# Interviewer probes: why reversed (direction of "reach"), why SCC and not "survivors of Kahn's"
+# (survivors include nodes DOWNSTREAM of a cycle in a general graph), what about self-loops.
+</pre>
+</div></details>
+
+<details class="card mine" open><summary>R3-3 &middot; SQL: how many times each student has given a particular exam <span class="tag ok">JOIN + GROUP BY</span></summary><div class="body">
+<p><b>Problem:</b> tables <code>Student(student_id, student_name)</code> and <code>Examination(student_id, subject_name)</code> (one row per attempt). Count attempts per student for a subject / for every subject.</p>
+<pre>
+-- attempts of one exam per student (students with zero attempts still listed)
+SELECT s.student_id, s.student_name, COUNT(e.student_id) AS attended_exams
+FROM Student s
+LEFT JOIN Examination e
+       ON e.student_id = s.student_id AND e.subject_name = 'Math'
+GROUP BY s.student_id, s.student_name
+ORDER BY s.student_id;
+
+-- every student x every subject, with zeros (LeetCode 1280 shape): CROSS JOIN then LEFT JOIN
+SELECT s.student_id, s.student_name, sub.subject_name, COUNT(e.student_id) AS attended_exams
+FROM Student s
+CROSS JOIN Subjects sub
+LEFT JOIN Examination e
+       ON e.student_id = s.student_id AND e.subject_name = sub.subject_name
+GROUP BY s.student_id, s.student_name, sub.subject_name
+ORDER BY s.student_id, sub.subject_name;
+
+-- students who gave 'Math' more than twice
+SELECT student_id, COUNT(*) AS attempts
+FROM Examination
+WHERE subject_name = 'Math'
+GROUP BY student_id
+HAVING COUNT(*) > 2;
+</pre>
+<div class="why"><b>What they probe:</b> COUNT(e.student_id) vs COUNT(*) after a LEFT JOIN (COUNT(*) counts the null row as 1, so zero-attempt students show 1). Filter conditions for the outer table go in ON, not WHERE, or the LEFT JOIN silently becomes an INNER JOIN. WHERE filters rows, HAVING filters groups.</div>
+</div></details>
+
+<details class="card mine" open><summary>R4-1 &middot; Equalize task durations with removals, minimum operations <span class="tag ok">sort + prefix sums, O(n log n)</span></summary><div class="body">
+<p><b>Problem:</b> duration[i] per task. One operation: pick a task, reduce by 1; at 0 it is removed. Reach a state where all remaining tasks are equal, in minimum operations. [1, 2, 6, 3] &rarr; 6.</p>
+<div class="why"><b>Exchange argument (say this, it is the whole interview):</b> any final state is "every survivor equals some t". A task with duration x &lt; t cannot be raised, so it must be removed, cost x. A task with x &gt;= t should be kept, not removed, because x - t &lt; x. So cost(t) = sum of values below t + sum of (x - t) for values at or above t. cost(t) is piecewise linear in t with breakpoints at the array values, so the minimum is at one of the values. Sort, prefix sums, try every value as t in O(1) each.</div>
+<pre>
+def min_ops_to_equalize(duration: list[int]) -> int:
+    d = sorted(duration); n = len(d)
+    pre = [0]
+    for x in d: pre.append(pre[-1] + x)                  # pre[i] = sum of d[:i]
+    best = pre[n]                                        # remove everything (never better than keeping the max)
+    for i in range(n):                                   # target t = d[i]; remove d[:i], reduce d[i:] to t
+        t = d[i]
+        removed = pre[i]
+        reduced = (pre[n] - pre[i]) - t * (n - i)
+        best = min(best, removed + reduced)
+    return best
+
+# [1,2,6,3] -> sorted [1,2,3,6]: t=1: 8, t=2: 1+5=6, t=3: 3+3=6, t=6: 6 -> 6.
+# O(n log n) for the sort, O(n) after. O(n) space (prefix), O(1) if you accumulate while scanning.
+# Follow-up they like: "duplicates?" (fine, equal t evaluated twice); "can we increase too?" (then it is median, not this).
+</pre>
+</div></details>
+
+<details class="card mine" open><summary>R4-2 &middot; Construct a binary tree from inorder + level-order traversals <span class="tag ok">O(n^2) worst, O(n log n) balanced</span></summary><div class="body">
+<div class="why"><b>Insight:</b> the first element of any level-order sequence is that subtree's root. Its position in inorder splits left and right subtrees. The level-order of the left subtree is simply the current level-order filtered to the nodes that sit left of the root in inorder, <b>keeping their relative order</b> (level order of a subtree is a subsequence of the parent's level order). Recurse. An inorder index map makes the filter a comparison instead of a search.</div>
+<pre>
+def build_tree(inorder: list[int], levelorder: list[int]):
+    pos = {v: i for i, v in enumerate(inorder)}          # values assumed unique
+    def build(level):                                    # level = level-order of this subtree
+        if not level: return None
+        root = TreeNode(level[0]); m = pos[level[0]]
+        root.left  = build([v for v in level if pos[v] < m])
+        root.right = build([v for v in level if pos[v] > m])
+        return root
+    return build(levelorder)
+
+# inorder [4,2,5,1,6,3,7], level [1,2,3,4,5,6,7] -> root 1; left level [2,4,5]; right level [3,6,7]; ...
+# Each level filters O(len) -> O(n) per depth -> O(n * height): O(n log n) balanced, O(n^2) skewed.
+# Compare: preorder+inorder is O(n) because the left subtree is a contiguous slice; level order is not contiguous, hence the filter.
+# O(n) variant if pushed: process level order once with a queue of (parent, lo, hi) inorder ranges;
+# each value belongs to the range that contains pos[v]; attach it as left/right of that range's parent and split the range.
+</pre>
+</div></details>
+
+
+</section>

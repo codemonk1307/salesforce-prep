@@ -1,0 +1,359 @@
+
+<section id="design">
+<h2>11. LLD and system design, the compressed version</h2>
+<div class="card static">
+<p>Salesforce asks LLD at MTS and mixes HLD in at SMTS. The scoring is the same: clarify, enumerate entities, define the API, show one flow end to end, then discuss trade-offs and failure modes. Do not draw before you have asked three questions.</p>
+<h4>The 45-minute script</h4>
+<ol>
+<li><b>Requirements (5 min):</b> functional (3 to 5 bullets), non-functional (scale, latency, consistency, availability), out of scope. Say numbers: users, QPS, data size, read/write ratio.</li>
+<li><b>Entities and API (10 min):</b> nouns become classes/tables, verbs become methods/endpoints. Write signatures.</li>
+<li><b>Core flow (10 min):</b> one happy path end to end with the data structures involved.</li>
+<li><b>Deep dive (10 min):</b> the hardest part: concurrency, eviction, scheduling, consistency.</li>
+<li><b>Trade-offs and failure (5 min):</b> what breaks at 10x, what you would monitor, what you would change.</li>
+</ol>
+</div>
+
+<details class="card"><summary>LLD: Parking lot</summary><div class="body">
+<pre>
+from enum import Enum
+from abc import ABC, abstractmethod
+import time, itertools
+
+class VehicleType(Enum): MOTORBIKE = 1; CAR = 2; TRUCK = 3
+class SpotType(Enum): SMALL = 1; MEDIUM = 2; LARGE = 3
+
+FITS = {VehicleType.MOTORBIKE: (SpotType.SMALL, SpotType.MEDIUM, SpotType.LARGE),
+        VehicleType.CAR: (SpotType.MEDIUM, SpotType.LARGE),
+        VehicleType.TRUCK: (SpotType.LARGE,)}
+
+class Vehicle:
+    def __init__(self, plate, vtype): self.plate, self.vtype = plate, vtype
+
+class Spot:
+    def __init__(self, spot_id, stype, floor): self.id, self.stype, self.floor = spot_id, stype, floor; self.vehicle = None
+    def is_free(self): return self.vehicle is None
+
+class Ticket:
+    _ids = itertools.count(1)
+    def __init__(self, vehicle, spot): self.id = next(self._ids); self.vehicle, self.spot = vehicle, spot; self.entry = time.time(); self.exit = None
+
+class PricingStrategy(ABC):
+    @abstractmethod
+    def fee(self, ticket) -> float: ...
+class HourlyPricing(PricingStrategy):
+    RATE = {SpotType.SMALL: 10, SpotType.MEDIUM: 20, SpotType.LARGE: 40}
+    def fee(self, t): hours = max(1, math.ceil((t.exit - t.entry) / 3600)); return hours * self.RATE[t.spot.stype]
+
+class ParkingLot:                                  # Singleton in a real codebase; keep free spots per type in a heap for "nearest"
+    def __init__(self, pricing): self.free = defaultdict(list); self.tickets = {}; self.pricing = pricing; self.lock = threading.Lock()
+    def add_spot(self, spot): heapq.heappush(self.free[spot.stype], (spot.floor, spot.id, spot))
+    def park(self, vehicle):
+        with self.lock:
+            for st in FITS[vehicle.vtype]:
+                if self.free[st]:
+                    _, _, spot = heapq.heappop(self.free[st]); spot.vehicle = vehicle
+                    t = Ticket(vehicle, spot); self.tickets[t.id] = t; return t
+            raise RuntimeError('lot full')
+    def unpark(self, ticket_id):
+        with self.lock:
+            t = self.tickets.pop(ticket_id); t.exit = time.time(); spot = t.spot; spot.vehicle = None
+            heapq.heappush(self.free[spot.stype], (spot.floor, spot.id, spot))
+            return self.pricing.fee(t)
+</pre>
+<p class="small">Talking points: Strategy for pricing, Factory for vehicles, Observer for display boards, Singleton for the lot. Follow-ups: multiple entrances (lock per floor), EV charging spots (new SpotType + capability flag), reservations (hold with expiry), persistence (tickets table).</p>
+</div></details>
+
+<details class="card"><summary>LLD: Elevator, Notification service, Meeting scheduler, Splitwise, Vending machine (skeletons)</summary><div class="body">
+<pre>
+# Elevator: Elevator(state: IDLE/UP/DOWN, current_floor, up_stops: min-heap, down_stops: max-heap)
+#   request(floor, direction) -> Dispatcher picks elevator by cost = distance + direction penalty
+#   step(): move one floor toward next stop in current direction; LOOK algorithm: reverse when no stops ahead
+#   Follow-ups: capacity, emergency stop, priority floors, multiple banks
+
+# Notification service: Notification(channel, payload, priority), Channel strategy (Email/SMS/Push) with send(),
+#   NotificationService.send -> enqueue (priority queue) -> worker -> retry with exponential backoff -> dead letter
+#   dedupe by idempotency key, rate limit per user, templates, user preferences, audit log
+
+# Meeting scheduler: Calendar per user = sorted list of (start, end); find_slot(users, duration, window):
+#   merge all busy intervals (K-way merge), walk gaps >= duration. Book = check overlap (bisect) + insert
+#   Follow-ups: time zones (store UTC), recurring meetings (RRULE expansion with bounds), rooms (resource calendars)
+
+# Splitwise: Expense(payer, amount, split_strategy: Equal/Exact/Percent) -> balances[(a, b)] += x
+#   simplify debts: net per user, max-heap creditors + max-heap debtors, settle greedily
+
+# Vending machine: State pattern (Idle -> HasMoney -> Dispensing), Inventory(slot -> (item, qty)),
+#   insert_coin, select, dispense, refund; validate money, handle out-of-stock and insufficient funds
+
+# General LLD checklist: SOLID, prefer composition, Enums for fixed sets, Strategy for pluggable behaviour,
+#   Observer for events, Factory for creation, Repository for persistence boundary, thread safety at the mutation point,
+#   custom exceptions with clear names, unit-test seams (inject clock, inject random)
+</pre>
+</div></details>
+
+<details class="card"><summary>HLD one-pagers: rate limiter, URL shortener, notification pipeline, multi-tenant SaaS, news feed, chat</summary><div class="body">
+<div class="tbl"><table>
+<tr><th>System</th><th>Core design</th><th>Numbers and trade-offs to say</th></tr>
+<tr><td>Distributed rate limiter</td><td>API gateway middleware; token bucket per (tenant, api) in Redis, atomic via Lua; local cache for hot keys; config service for limits</td><td>Redis ~100k ops/s per node; shard by tenant; fail-open vs fail-closed; clock skew; headers X-RateLimit-Remaining; sliding window log vs counter memory</td></tr>
+<tr><td>URL shortener</td><td>Write: ID generator (Snowflake or counter ranges) -> base62; store (short, long, owner, expiry); Read: cache (Redis LRU) -> DB; 301 vs 302</td><td>Read heavy 100:1; 7 chars base62 = 3.5T keys; cache hit 90%+; analytics via async stream (Kafka); custom aliases uniqueness</td></tr>
+<tr><td>Notification / event pipeline</td><td>Producers -> Kafka topics by priority -> workers per channel -> provider adapters; retry with backoff; DLQ; idempotency key store; user preferences service</td><td>At-least-once + idempotent send; ordering per user via partition key; rate limits per provider; observability: delivery latency p99, failure rate by provider</td></tr>
+<tr><td>Multi-tenant SaaS data layer (Salesforce's home turf)</td><td>Tenant id on every row and every cache key; row-level security at the query layer; per-tenant limits (API calls, storage); metadata-driven schema (custom objects/fields) as in Salesforce's platform; noisy-neighbour isolation via quotas and queues</td><td>Shared schema vs schema-per-tenant vs DB-per-tenant; big tenants get dedicated shards; per-tenant encryption keys; governor limits; tenant-aware caching and rate limiting</td></tr>
+<tr><td>News feed</td><td>Fan-out on write for normal users (push to followers' feed cache), fan-out on read for celebrities; ranking service; feed = K-way merge of sources</td><td>Hybrid fan-out threshold; Redis lists per user capped at N; pagination by (score, id) cursor</td></tr>
+<tr><td>Chat / presence</td><td>WebSocket gateways with sticky sessions; message service persists (Cassandra by (chat_id, time)); pub/sub for online delivery; sequence numbers per chat for ordering; presence via heartbeats in Redis with TTL</td><td>Delivery receipts; offline push; group chat fan-out; end-to-end encryption scope</td></tr>
+<tr><td>LLM gateway (from your own work, be ready)</td><td>Streaming proxy; per-tenant rate limits and token budgets; semantic cache; provider failover with backpressure; tracing and cost attribution</td><td>Latency p50/p99, tokens/sec, cache hit rate, fallback trigger rules, context window control per tenant</td></tr>
+</table></div>
+<h4>Vocabulary you must use correctly</h4>
+<p class="small">CAP and PACELC, strong vs eventual consistency, idempotency keys, at-least-once vs exactly-once (effectively once), consistent hashing, read replicas and replication lag, sharding key choice and hot partitions, write-ahead log, cache-aside vs write-through vs write-back, TTL and stampede protection (locks, jitter), backpressure, circuit breaker, bulkhead, dead-letter queue, p99 latency, SLO and error budget, leader election, quorum, vector clocks (mention, do not derive), CDC, outbox pattern, saga for distributed transactions.</p>
+</div></details>
+
+<details class="card"><summary>Concurrency questions they slip in</summary><div class="body">
+<pre>
+import threading
+class ThreadSafeCounter:
+    def __init__(self): self.v = 0; self.lock = threading.Lock()
+    def inc(self):
+        with self.lock: self.v += 1
+
+class BoundedBlockingQueue:                        # producer / consumer with Condition
+    def __init__(self, cap): self.q = deque(); self.cap = cap; self.cv = threading.Condition()
+    def put(self, x):
+        with self.cv:
+            while len(self.q) == self.cap: self.cv.wait()
+            self.q.append(x); self.cv.notify_all()
+    def get(self):
+        with self.cv:
+            while not self.q: self.cv.wait()
+            x = self.q.popleft(); self.cv.notify_all(); return x
+
+# Print in order / FizzBuzz multithreaded: Semaphore per stage, release the next one
+# Singleton: double-checked locking (in Python, module-level instance is simpler)
+# Read-write lock: readers count + writer lock; talk about writer starvation
+# GIL: Python threads help for I/O, not CPU; use multiprocessing or asyncio for concurrency in I/O bound services
+# Deadlock avoidance: acquire locks in a global order; use timeouts; prefer one lock over many
+# Async: asyncio.gather for fan-out, semaphores to cap concurrency, timeouts and cancellation
+</pre>
+</div></details>
+
+<details class="card"><summary>OOP / DB / OS rapid-fire (assessment MCQs and warm-ups)</summary><div class="body">
+<ul>
+<li><b>OOP:</b> encapsulation, abstraction, inheritance, polymorphism (overloading vs overriding), composition over inheritance, interfaces vs abstract classes, SOLID in one line each, immutability, dependency injection.</li>
+<li><b>Python specifics:</b> everything is an object, duck typing, dunder methods (<code>__eq__</code>, <code>__hash__</code>, <code>__lt__</code>, <code>__iter__</code>), generators vs lists, decorators, context managers, GIL, shallow vs deep copy, <code>is</code> vs <code>==</code>, list vs tuple, dict ordering guarantees, <code>*args/**kwargs</code>.</li>
+<li><b>DB:</b> ACID, isolation levels and anomalies (dirty, non-repeatable, phantom), indexes (B-tree vs hash, composite, covering, leftmost prefix), normalization 1NF to 3NF, joins, N+1 problem, explain plans, optimistic vs pessimistic locking, SQL vs NoSQL choice, transactions and idempotency.</li>
+<li><b>SQL you should write cold:</b> second highest salary (dense_rank / offset), top N per group (window row_number), duplicate emails (group by having), running totals (sum over), employees earning more than manager (self join), department highest salary (join + max), consecutive numbers (self-join or lag).</li>
+<li><b>OS / networking:</b> process vs thread, context switch, deadlock conditions, mutex vs semaphore, virtual memory and paging, TCP vs UDP, TCP handshake, HTTP/1.1 vs 2, TLS basics, DNS resolution, what happens when you type a URL, REST vs gRPC, idempotent HTTP methods, status codes 200/201/204/301/302/400/401/403/404/409/429/500/503.</li>
+</ul>
+</div></details>
+</section>
+
+<section id="behavioral">
+<h2>12. Behavioral and hiring manager round</h2>
+<div class="card static">
+<p>Salesforce interviews for values as explicitly as for code. The five core values: <b>Trust, Customer Success, Innovation, Equality, Sustainability</b>. Every story you tell should touch at least one, and you should be able to name which. Use STAR with numbers, and finish every story with what you would do differently.</p>
+<h4>Story bank (map each to values, keep each under 2 minutes)</h4>
+<div class="tbl"><table>
+<tr><th>Story</th><th>What happened (your framing)</th><th>Values hit</th><th>Likely follow-up</th></tr>
+<tr><td>Usage-based billing escape hatch (Zoho subscription platform)</td><td>Built the flat $75/provider Professional tier as asked. Saw a risk nobody had priced: a heavy practice could cost more in tokens than it paid. There was a different view on priority, so I shipped a per-token billing switch off-by-default behind an admin-console property. A US team member later raised the same risk in review; it was already built.</td><td>Trust, Customer Success</td><td>"How did you handle the disagreement?" Answer: I did not escalate; I made it configurable so nobody's workflow changed and the safeguard existed.</td></tr>
+<tr><td>Assistant / Agent dual runtime (MedicalMine, Charm Copilot)</td><td>Rebuilt the Copilot backend on an in-house agentic framework because the OpenAI Assistants API was being deprecated, serving 1,000+ practices. Kept both runtimes behind one config flag so an incident is a flag flip, not a 4 to 5 day hotfix. Latency went from 8 to 15 s to 2 to 5 s.</td><td>Trust, Innovation</td><td>"You own the context now, did you optimize cost?" Answer honestly: cost did not drop, quality came first; your view on sliding windows, summarization, selective tool-result inclusion.</td></tr>
+<tr><td>Support self-service with scoped admin endpoints (Zoho e-KYC)</td><td>7 to 8 of every 10 tickets routed to me were status lookups. Exposed read-only verification-status endpoints from the admin console, scoped to the support role, with HIPAA discipline: agents see which step failed, never documents, selfies or phone numbers. 60 to 80% of those tickets disappeared; adopted team-wide.</td><td>Trust, Customer Success, Equality</td><td>"How did you get adoption?" Proposed in a joint India + US meeting with the ticket analysis as evidence.</td></tr>
+<tr><td>Dev build provisioning script (self-initiated)</td><td>Cut environment setup from 1 to 2 days with 3 to 4 engineers to a single 10-minute command; now the default onboarding path for all 40 engineers across India and US. It is a bash script; the metric carries the story, not the architecture.</td><td>Innovation, Customer Success (internal customers)</td><td>"What was hard?" Idempotency, machine-specific IntelliJ flags, secrets from a restricted Drive over read-only OAuth.</td></tr>
+<tr><td>FAQPilot</td><td>Python service with semantic search over crawled guides, OpenAI embeddings + GPT-4o-mini synthesis. 500+ validation sessions before rollout. Ticket reduction of 60% is a <i>projection</i>, say the word.</td><td>Innovation, Customer Success</td><td>"How did you measure quality?" The 500 validation sessions; what you would add: golden set, regression evals.</td></tr>
+<tr><td>Charm Copilot scale</td><td>10,000+ practitioners, 10,000+ patient summaries a day, 100,000+ minutes of clinician audio daily. Documentation burden down 30 to 50% per charmhealth.com's published figures.</td><td>Customer Success</td><td>"Failure you saw in production?" Have one ready with the fix and the monitoring added after.</td></tr>
+</table></div>
+<div class="warn">Framing rules: never "they were wrong, I was right". Never invent a metric; every number will be probed. Title is Software Engineer, 4+ years. Zoho to MedicalMine: "MedicalMine builds CharmHealth, the EHR I worked on at Zoho; the organisations separated and the Charm product line consolidated under MedicalMine, so I moved with the product I already owned. More scope, better compensation, a newly formed engineering org." Nothing else.</div>
+<h4>Questions to expect</h4>
+<ul>
+<li>Tell me about yourself (90 seconds: current role and scale, one signature story, why this team).</li>
+<li>Why Salesforce? (Trust as a value, multi-tenant platform at scale, CRM + AI (Agentforce), the chance to work on a platform others build on, the healthcare-to-enterprise transition you are making with intent.)</li>
+<li>A time you disagreed with your manager or a senior engineer.</li>
+<li>A time you shipped something that failed. What did you change?</li>
+<li>A project you owned end to end. What would you do differently?</li>
+<li>How do you handle ambiguous requirements? Give an example.</li>
+<li>A time you had to deliver under a tight deadline and what you cut.</li>
+<li>How do you mentor or help teammates? (build script onboarding, DFD standard work across 5 teams)</li>
+<li>Something you learned recently outside your job. (Recursive Rootz content, the flagship LLM gateway project.)</li>
+<li>Questions for them: team charter, how they measure success in 6 months, on-call and release cadence, how AI is changing their roadmap.</li>
+</ul>
+</div>
+</section>
+
+<section id="process">
+<h2>13. Error log, spaced repetition, mastery definition</h2>
+<details class="card" open><summary>Error log (one line per mistake, category not description)</summary><div class="body">
+<p>Format: <code>date | problem | category | one-sentence root cause</code>. Keep it in a plain text file next to this page.</p>
+<div class="grid2">
+<ul>
+<li>Pattern not recognized</li>
+<li>Wrong pattern chosen (trigger misfired)</li>
+<li>Constraint misread</li>
+<li>Wrong invariant</li>
+<li>Wrong data structure</li>
+<li>Brute force trap (settled too early)</li>
+<li>Off-by-one</li>
+</ul>
+<ul>
+<li>Edge case missed</li>
+<li>Complexity stated wrong</li>
+<li>Python implementation slip</li>
+<li>DP state wrong</li>
+<li>Greedy assumption unproven</li>
+<li>Graph traversal bug (visited set, direction, revisiting)</li>
+<li>Communication (went silent, did not restate, did not test)</li>
+</ul>
+</div>
+<p class="small">Any category appearing 3+ times becomes a dedicated drill day in week 4.</p>
+<p>Scratch log (saved in this browser only):</p>
+<textarea id="errlog" rows="6" style="width:100%; font:13px ui-monospace, Consolas, monospace; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink)" placeholder="2026-09-17 | Subarray Sum Equals K | Wrong pattern chosen | tried sliding window with negatives present"></textarea>
+</div></details>
+
+<details class="card" open><summary>Spaced repetition ladder</summary><div class="body">
+<p><b>Learn &rarr; Solve &rarr; Recall (24h) &rarr; Modify (state a variation) &rarr; Solve variation &rarr; Blind re-solve (7 days)</b></p>
+<p>A problem only exits the queue after a clean blind re-solve. The checkbox lists in section 8 are the queue: tick only after the blind re-solve.</p>
+</div></details>
+
+<details class="card" open><summary>Mastery definition (nine out of nine, or it is not mastered)</summary><div class="body">
+<ol>
+<li>Recognize it in a new problem</li>
+<li>Explain why it applies</li>
+<li>State the invariant</li>
+<li>Derive the algorithm from scratch</li>
+<li>Implement it in clean Python</li>
+<li>Analyze time and space and justify both</li>
+<li>Enumerate the edge cases</li>
+<li>Solve a variation</li>
+<li>Explain the whole thing out loud while typing</li>
+</ol>
+</div></details>
+
+<details class="card" open><summary>Speed drill deck (say the pattern, do not solve)</summary><div class="body">
+<p class="small">Read each, say the pattern in under 10 seconds, then check against the trigger table. Reshuffle daily.</p>
+<ol>
+<li>Longest substring with at most two distinct characters</li>
+<li>Count subarrays whose sum is divisible by 7, values may be negative</li>
+<li>Minimum number of days to ship all packages with capacity C</li>
+<li>For each building, how many buildings to its right are shorter until a taller one</li>
+<li>Given course prerequisites, can you finish all courses</li>
+<li>Kth largest element of a stream</li>
+<li>Minimum rooms for a set of meetings</li>
+<li>Shortest path from top-left to bottom-right through 0 cells, 8 directions</li>
+<li>Number of ways to make change for amount A with unlimited coins</li>
+<li>All unique combinations summing to target, each candidate once</li>
+<li>Whether two people are in the same friend group after a sequence of friendships</li>
+<li>Maximum profit with at most two transactions</li>
+<li>First index where a sorted-then-rotated array has target</li>
+<li>Smallest window of s containing all characters of t</li>
+<li>Serialize an N-ary tree</li>
+<li>Median of the last K elements in a stream</li>
+<li>Whether a string can be segmented into dictionary words</li>
+<li>Minimum edits to turn word A into word B</li>
+<li>Largest square of 1s in a binary matrix</li>
+<li>Find all words from a dictionary present in a letter grid</li>
+<li>Check if a linked list is a palindrome in O(1) space</li>
+<li>Find the duplicate in an array of n+1 integers in 1..n without modifying it</li>
+<li>Time-ordered key-value store, get value as of a timestamp</li>
+<li>Limit each client to 100 requests per minute</li>
+<li>Given a log of function enter/exit events, exclusive time per function</li>
+</ol>
+<p class="small">Answers in order: sliding window; prefix mod map; binary search on answer; monotonic stack; topological sort; heap size k; heap of ends / sweep; BFS; unbounded knapsack (coins outer); backtracking with skip; union-find; state-machine DP; modified binary search; sliding window with need counts; preorder with child counts; two heaps with lazy deletion (or sorted container); 1D DP; 2D string DP; grid DP; trie + DFS; fast/slow + reverse half; Floyd on values; bisect on list per key; deque per client / token bucket; stack of frames.</p>
+</div></details>
+</section>
+
+<footer class="wrap">
+<p>Built from the 30-day plan reference. Question lists compiled from public reports; interview content changes, so treat any single problem as a sample of its pattern, not a prediction. Progress checkboxes and the scratch log are stored only in this browser (localStorage).</p>
+</footer>
+</main>
+<button class="totop" id="totop" aria-label="Back to top" title="Back to top">&uarr;</button>
+
+<script>
+(function(){
+  var KEY = 'sfprep:';
+  function slug(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+  // checkboxes with persistence
+  var boxes = document.querySelectorAll('ul.q input[type=checkbox]');
+  function updateProgress(){
+    var done = 0; boxes.forEach(function(b){ if (b.checked) done++; });
+    var el = document.getElementById('progress');
+    if (el) el.textContent = done + ' / ' + boxes.length + ' problems cold';
+  }
+  boxes.forEach(function(b){
+    var name = b.parentNode.querySelector('b');
+    var id = KEY + 'q:' + slug(name ? name.textContent : Math.random().toString());
+    b.dataset.key = id;
+    try { b.checked = localStorage.getItem(id) === '1'; } catch(e){}
+    b.addEventListener('change', function(){
+      try { if (b.checked) localStorage.setItem(id, '1'); else localStorage.removeItem(id); } catch(e){}
+      updateProgress();
+    });
+  });
+  updateProgress();
+
+  // scratch error log
+  var log = document.getElementById('errlog');
+  if (log){
+    try { log.value = localStorage.getItem(KEY + 'errlog') || ''; } catch(e){}
+    log.addEventListener('input', function(){ try { localStorage.setItem(KEY + 'errlog', log.value); } catch(e){} });
+  }
+
+  // copy buttons on code blocks
+  document.querySelectorAll('pre').forEach(function(pre){
+    var btn = document.createElement('button');
+    btn.className = 'copy'; btn.type = 'button'; btn.textContent = 'copy';
+    btn.addEventListener('click', function(){
+      var text = pre.innerText.replace(/^copy\n?/, '').replace(/\n?copy$/, '');
+      var done = function(){ btn.textContent = 'copied'; setTimeout(function(){ btn.textContent = 'copy'; }, 1200); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, done);
+      else { var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch(e){} document.body.removeChild(ta); done(); }
+    });
+    pre.appendChild(btn);
+  });
+
+  // expand / collapse
+  var cards = document.querySelectorAll('details.card');
+  document.getElementById('expandAll').addEventListener('click', function(){ cards.forEach(function(c){ c.open = true; }); });
+  document.getElementById('collapseAll').addEventListener('click', function(){ cards.forEach(function(c){ c.open = false; }); });
+
+  // search filter over cards
+  var search = document.getElementById('search');
+  var all = document.querySelectorAll('.card');
+  var sections = document.querySelectorAll('main > section');
+  var timer;
+  search.addEventListener('input', function(){
+    clearTimeout(timer);
+    timer = setTimeout(function(){
+      var q = search.value.trim().toLowerCase();
+      all.forEach(function(c){
+        var hit = !q || c.textContent.toLowerCase().indexOf(q) !== -1;
+        c.classList.toggle('hidden', !hit);
+        if (q && hit && c.tagName === 'DETAILS') c.open = true;
+      });
+      sections.forEach(function(s){
+        var visible = s.querySelector('.card:not(.hidden)');
+        s.classList.toggle('hidden', !!q && !visible);
+      });
+    }, 120);
+  });
+
+  // theme toggle: light (default) <-> dark
+  var root = document.documentElement, themeBtn = document.getElementById('themeBtn');
+  try { var saved = localStorage.getItem(KEY + 'theme'); if (saved) root.setAttribute('data-theme', saved); } catch(e){}
+  themeBtn.addEventListener('click', function(){
+    var cur = root.getAttribute('data-theme');
+    var next = cur === 'dark' ? '' : 'dark';
+    if (next) root.setAttribute('data-theme', next); else root.removeAttribute('data-theme');
+    try { if (next) localStorage.setItem(KEY + 'theme', next); else localStorage.removeItem(KEY + 'theme'); } catch(e){}
+  });
+
+  // back to top
+  var top = document.getElementById('totop');
+  top.addEventListener('click', function(){ window.scrollTo({top:0, behavior:'smooth'}); });
+  window.addEventListener('scroll', function(){ top.style.display = window.scrollY > 600 ? 'block' : 'none'; });
+  top.style.display = 'none';
+
+  // open the card that a hash points into
+  function openHash(){
+    var h = location.hash && document.querySelector(location.hash);
+    if (h){ var d = h.closest && h.closest('details'); if (d) d.open = true; }
+  }
+  window.addEventListener('hashchange', openHash); openHash();
+})();
+</script>
+</body>
+</html>
