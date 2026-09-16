@@ -30,7 +30,6 @@ Progress (checkboxes, Lazy-mode cards, error log, theme) is stored in the browse
 - `salesforce_beast_prep.html` — the page (generated)
 - `src/parts/*.html` — source sections; `src/build.js` — concatenates them and HTML-escapes code blocks
 - `salesforce_dsa_30_day_plan.md` — the original plan this was built from
-- `linkedin_post_salesforce.md` — interview-experience post draft
 
 ## Rebuild after editing a part
 
