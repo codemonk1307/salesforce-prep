@@ -2,7 +2,7 @@
 
 A single-file, offline, mobile-friendly interview prep page for a Salesforce MTS / SDE-2 loop (Python).
 
-**Open:** [`salesforce_beast_prep.html`](salesforce_beast_prep.html) — no build, no dependencies. Works on any screen width.
+**Open:** [`index.html`](index.html) — no build, no dependencies. Works on any screen width. Deployed via GitHub Pages at the repo root.
 
 ## What is inside
 
@@ -27,14 +27,14 @@ Progress (checkboxes, Lazy-mode cards, error log, theme) is stored in the browse
 
 ## Files
 
-- `salesforce_beast_prep.html` — the page (generated)
+- `index.html` — the page (generated)
 - `src/parts/*.html` — source sections; `src/build.js` — concatenates them and HTML-escapes code blocks
 - `salesforce_dsa_30_day_plan.md` — the original plan this was built from
 
 ## Rebuild after editing a part
 
 ```bash
-node src/build.js salesforce_beast_prep.html
+node src/build.js index.html
 ```
 
 Code inside `<pre>` blocks in `src/parts` is written raw (no HTML escaping); the build step escapes it.
